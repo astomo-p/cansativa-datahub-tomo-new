@@ -1,11 +1,5 @@
 {
-    "Auth": true,
-    "User": true,
-    "Blog": true,
-    "Newsletter": true,
-    "Whatsapp": true,
-    "Core": true,
     "Analytics": true,
     "ContactData": true,
-    "Campaign": true
+    "NewAnalytics": true
 }

@@ -1,0 +1,11 @@
+{
+    "name": "NewAnalytics",
+    "alias": "newanalytics",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\NewAnalytics\\Providers\\NewAnalyticsServiceProvider"
+    ],
+    "files": []
+}
