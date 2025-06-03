@@ -1,0 +1,11 @@
+{
+    "name": "ContactData",
+    "alias": "contactdata",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\ContactData\\App\\Providers\\ContactDataServiceProvider"
+    ],
+    "files": []
+}
