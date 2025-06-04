@@ -1,5 +1,6 @@
 {
     "Analytics": true,
     "ContactData": true,
-    "NewAnalytics": true
+    "NewAnalytics": true,
+    "NewContactData": true
 }

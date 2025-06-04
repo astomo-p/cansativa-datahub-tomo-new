@@ -12,6 +12,7 @@ use Google\Analytics\Data\V1beta\DateRange;
 use Google\Analytics\Data\V1beta\Dimension;
 use Google\Analytics\Data\V1beta\Metric;
 use Modules\NewAnalytics\Models\UserComments;
+use Modules\NewAnalytics\Models\UserSavedPosts;
 
 class NewAnalyticsController extends Controller
 {

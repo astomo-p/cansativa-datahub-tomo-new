@@ -1,0 +1,11 @@
+{
+    "name": "NewContactData",
+    "alias": "newcontactdata",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\NewContactData\\Providers\\NewContactDataServiceProvider"
+    ],
+    "files": []
+}
