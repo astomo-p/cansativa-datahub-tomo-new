@@ -34,5 +34,7 @@ Route::prefix('v1')->name('api.')->group(function () {
 });
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
-    Route::apiResource('newcontactdatas', NewContactDataController::class)->names('newcontactdata');
+    Route::get('/sanctum',function(Request $request){
+        return response(["status"=>"success","message"=>"yes"],200);
+    });
 });
