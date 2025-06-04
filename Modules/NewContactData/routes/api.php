@@ -30,7 +30,12 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::delete('contact/general-newsletter-data/id/{id}', [NewContactDataController::class, "deleteGeneralNewsletterDataById"]);
     Route::get('contact/pharmacy-database/parent/{parentId}', [NewContactDataController::class, "pharmacyDatabaseByParentId"]);
     Route::post('contact/pharmacy-database/add', [NewContactDataController::class, "addPharmacyDatabase"]);
+    Route::get('contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "pharmacyDatabaseByParentIdAndId"]);
+    Route::put('contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "updatePharmacyDatabaseByParentIdAndId"]);
+    Route::delete('contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "deletePharmacyDatabaseByParentIdAndId"]);
     Route::post('contact/minio-upload', [NewContactDataController::class, "minioUpload"]);
+    Route::get('woocommerce/customers',[NewContactDataController::class,'woocommerceCustomers']);  
+
 });
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
