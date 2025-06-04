@@ -928,18 +928,22 @@ class NewContactDataController extends Controller
                 ]
                 );        
         $woo_response = $woocommerce->get('customers?page=1&per_page=3');
-        $id = Contacts::all()->last()->id;
+        $id = Contacts::orderBy('id','desc')->first()->id;
+        $last_id = 0;
         foreach($woo_response as $key){
+        $last_id = $last_id == 0 ? $id + 1 : $last_id + 1;
+        DB::beginTransaction();
+        try {
         $contact = new Contacts();
-        $contact->id += $id ;
+        $contact->id = $last_id ;
         $contact->contact_name = $key->billing->company;
         $contact->contact_no = "";
         $contact->address = "-";
-        $contact->post_code = $key->billing->post_code;
+        $contact->post_code = $key->billing->postcode;
         $contact->city = $key->billing->city;
-        $contact->country = $key->billing["country"];
+        $contact->country = $key->billing->country;
         $contact->contact_person = "-";
-        $contact->email = $key->billing["email"];
+        $contact->email = $key->billing->email;
         $contact->phone_no = "-";
         $contact->amount_purchase = "0.00";
         $contact->total_purchase = "0.00";
@@ -953,12 +957,20 @@ class NewContactDataController extends Controller
         $contact->created_by = 12;
         $contact->created_date = date("Y-m-d H:i:s");
         $contact->updated_by = 12;
-        $contact->updated_date = date("Y-m_d H:i:s");
-        $contact->save();
+        $contact->updated_date = date("Y-m-d H:i:s");
+        $contact->save();  
+        DB::commit();
+        } catch (Exceptions $e) {
+            DB::rollback();
+            return $this->errorResponse('Error',500, $e->message);
+        }
         }
 
         return $this->successResponse([
-            'type' => dump($woo_response),
+            //'type' => dump($woo_response),
+           $woo_response,
+           $last_id,
+           "tes"
         ],'Success',200);
     }
     
