@@ -917,6 +917,49 @@ class NewAnalyticsController extends Controller
     
      }
 
+    /**
+     * Get Analytics average time onsite
+     */
+
+    public function analyticsAverageTimeOnsite()
+    {
+        $year = date('Y');
+        $now = date('Y-m-d');
+        $ranges = new DateRange(['start_date' => "$year-01-01", 'end_date' => $now]);
+        $date_range = [$ranges];
+        $dimensions = [
+            new Dimension(['name'=>'day'])
+        ];
+        $metrics = [
+            new Metric(['name'=>'averageSessionDuration'])
+        ];
+        $request = new RunReportRequest([
+            'property' => 'properties/' . env('ANALYTICS_PROPERTY'),
+            'date_ranges' => $date_range,
+            'dimensions' => $dimensions,
+            'metrics' => $metrics,
+            'limit' => 100
+        ]);
+        $response = $this->analytics_client->runReport($request);
+        $res = [];
+        $average_onsite = 0;
+        foreach ($response->getRows() as $row) {
+            $dimension_value = $row->getDimensionValues();
+            $metrics_value = $row->getMetricValues();
+            $day = $dimension_value[0]->getValue();
+            if($day == date('d')){
+                $average_onsite += (int) $metrics_value[0]->getValue();
+            } 
+        }
+         array_push($res,[
+            "average_time_onsite"=>$average_onsite
+        ]);
+       
+       
+       return $this->successResponse($res, 'Analytics average time onsite retrieved successfully',200);
+    
+    } 
+
 
     /**
      * Display a listing of the resource.
