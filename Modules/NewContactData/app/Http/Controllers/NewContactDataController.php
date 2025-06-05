@@ -927,8 +927,8 @@ class NewContactDataController extends Controller
                         'version' => 'wc/v3'
                 ]
                 );        
-        $woo_response = $woocommerce->get('customers2page=1&per_page=5');
-       // $id = Contacts::orderBy('id','desc')->first()->id;
+      $woo_response = $woocommerce->get('/customers?page=2&per_page=10');
+       /*   // $id = Contacts::orderBy('id','desc')->first()->id;
         $last_id = 0;
         foreach($woo_response as $key){
        // $last_id = $last_id == 0 ? $id + 1 : $last_id + 1;
@@ -964,12 +964,12 @@ class NewContactDataController extends Controller
             DB::rollback();
             return $this->errorResponse('Error',500, $e->message);
         }
-        }
+        } */
 
         return $this->successResponse([
             //'type' => dump($woo_response),
-           $woo_response,
-           $last_id,
+          $woo_response,
+         //  $last_id,
            "tes"
         ],'Success',200);
     }
