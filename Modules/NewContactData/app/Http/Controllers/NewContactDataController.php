@@ -927,7 +927,7 @@ class NewContactDataController extends Controller
                         'version' => 'wc/v3'
                 ]
                 );        
-      $woo_response = $woocommerce->get('/customers?page=2&per_page=10');
+      $woo_response = $woocommerce->get('customers?page=2&per_page=10');
        /*   // $id = Contacts::orderBy('id','desc')->first()->id;
         $last_id = 0;
         foreach($woo_response as $key){
