@@ -927,15 +927,15 @@ class NewContactDataController extends Controller
                         'version' => 'wc/v3'
                 ]
                 );        
-        $woo_response = $woocommerce->get('customers?page=1&per_page=3');
-        $id = Contacts::orderBy('id','desc')->first()->id;
+        $woo_response = $woocommerce->get('customers2page=1&per_page=5');
+       // $id = Contacts::orderBy('id','desc')->first()->id;
         $last_id = 0;
         foreach($woo_response as $key){
-        $last_id = $last_id == 0 ? $id + 1 : $last_id + 1;
+       // $last_id = $last_id == 0 ? $id + 1 : $last_id + 1;
         DB::beginTransaction();
         try {
         $contact = new Contacts();
-        $contact->id = $last_id ;
+       // $contact->id = $last_id ;
         $contact->contact_name = $key->billing->company;
         $contact->contact_no = "";
         $contact->address = "-";
