@@ -435,7 +435,7 @@ class NewAnalyticsController extends Controller
             $total_users_regist += (int) $metrics_value[0]->getValue();
         }
         array_push($res,[
-            "total_users_registered"=>$total_users_regist
+            "total"=>$total_users_regist
         ]);
        return $this->successResponse($res, 'Analytics total user registered retrieved successfully',200);
     }
@@ -507,7 +507,7 @@ class NewAnalyticsController extends Controller
             }
             
         array_push($res,[
-            "total_seven_day_visitor"=>$total_users
+            "total"=>$total_users
         ]);
        return $this->successResponse($res, 'Analytics total seven day visitor retrieved successfully',200);
     }
@@ -578,7 +578,7 @@ class NewAnalyticsController extends Controller
                 }
             }
         array_push($res,[
-            "total_seven_day_new_user"=>$total_users_new
+            "total"=>$total_users_new
         ]); 
          return $this->successResponse($res, 'Analytics total seven day new user retrieved successfully',200);
     }
@@ -619,7 +619,7 @@ class NewAnalyticsController extends Controller
             }
         }
         array_push($res,[
-            "total_thirty_day_visitor"=>$total_users_thirty_day
+            "total"=>$total_users_thirty_day
         ]);
        return $this->successResponse($res, 'Analytics total thirty day visitor retrieved successfully',200);
     }
@@ -660,7 +660,7 @@ class NewAnalyticsController extends Controller
             }
         }
         array_push($res,[
-            "total_thirty_day_new_user"=>$total_users_new_thirty_day
+            "total"=>$total_users_new_thirty_day
         ]);
        return $this->successResponse($res, 'Analytics total thirty day new user retrieved successfully',200);
     }
@@ -678,7 +678,7 @@ class NewAnalyticsController extends Controller
         ->where('is_like', 1)
         ->count();
         array_push($res,[
-            "total_likes"=>(int) $total_likes
+            "total"=>(int) $total_likes
         ]); 
          return $this->successResponse($res, 'Analytics total seven day like retrieved successfully',200);
     }
@@ -696,7 +696,7 @@ class NewAnalyticsController extends Controller
         ->where('is_saved', 1)
         ->count();
         array_push($res,[
-            "total_saves"=>$total_saves
+            "total"=>$total_saves
         ]); 
          return $this->successResponse($res, 'Analytics total seven day save retrieved successfully',200);
     }
@@ -713,7 +713,7 @@ class NewAnalyticsController extends Controller
         ->where('created_date', '<=', $now)
         ->count();;
         array_push($res,[
-            "total_comments"=>$total_comments
+            "total"=>$total_comments
         ]); 
          return $this->successResponse($res, 'Analytics total seven day comment retrieved successfully',200);
     }
@@ -732,7 +732,7 @@ class NewAnalyticsController extends Controller
         ->where('is_like', 1)
         ->count();;
         array_push($res,[
-            "total_likes"=>$total_likes
+            "total"=>$total_likes
         ]); 
          return $this->successResponse($res, 'Analytics total thirty day likes retrieved successfully',200);
     }
@@ -750,7 +750,7 @@ class NewAnalyticsController extends Controller
         ->where('is_saved', 1)
         ->count();;
         array_push($res,[
-            "total_saves"=>$total_saves
+            "total"=>$total_saves
         ]); 
          return $this->successResponse($res, 'Analytics total thirty day save retrieved successfully',200);
     }
@@ -769,7 +769,7 @@ class NewAnalyticsController extends Controller
         ->where('created_date', '<=', $now)
         ->count();;
         array_push($res,[
-            "total_comments"=>$total_comments
+            "total"=>$total_comments
         ]); 
          return $this->successResponse($res, 'Analytics total thirty day comment retrieved successfully',200);
     }
@@ -788,7 +788,7 @@ class NewAnalyticsController extends Controller
         ->where('is_like', 1)
         ->count();;
         array_push($res,[
-            "total_likes"=>$total_likes
+            "total"=>$total_likes
         ]); 
          return $this->successResponse($res, 'Analytics total twenty four hour likes retrieved successfully',200);
     }
@@ -807,7 +807,7 @@ class NewAnalyticsController extends Controller
         ->where('is_saved', 1)
         ->count();;
         array_push($res,[
-            "total_saves"=>$total_saves
+            "total"=>$total_saves
         ]); 
          return $this->successResponse($res, 'Analytics total twenty four hour save retrieved successfully',200);
      }
@@ -825,7 +825,7 @@ class NewAnalyticsController extends Controller
         ->where('created_date', '<=', $now)
         ->count();;
         array_push($res,[
-            "total_comments"=>$total_comments
+            "total"=>$total_comments
         ]); 
          return $this->successResponse($res, 'Analytics total twenty four hour comment retrieved successfully',200);
       }
@@ -866,7 +866,7 @@ class NewAnalyticsController extends Controller
             }
        
         array_push($res,[
-            "total_new_user"=>$total_new_user
+            "total"=>$total_new_user
         ]); 
          return $this->successResponse($res, 'Analytics total twenty four hour new user retrieved successfully',200);
        }
@@ -909,7 +909,7 @@ class NewAnalyticsController extends Controller
             }
         }
         array_push($res,[
-            "total_visitor"=>$total_visitor
+            "total"=>$total_visitor
         ]);
        
        
