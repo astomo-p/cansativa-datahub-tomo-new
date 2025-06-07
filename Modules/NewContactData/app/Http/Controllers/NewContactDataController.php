@@ -923,6 +923,7 @@ class NewContactDataController extends Controller
                 'ck_d9c04361efce8629f4a55dfcf475dbcfaa2d4cff',
                 'cs_115ff19114a66132e3fdca922f74eb28dcebac74',
                 [
+                        'timeout' => '29',
                         'wp_api' => true,
                         'version' => 'wc/v3'
                 ]
