@@ -4,12 +4,12 @@ use Illuminate\Support\Facades\Route;
 use Modules\NewAnalytics\Http\Controllers\NewAnalyticsController;
 
 Route::prefix('v1')->name('api.')->group(function () {
-    Route::get('analytics-monthly-visitor', [NewAnalyticsController::class,"analyticsMonthlyVisitor"])->name('analytics.monthly.visitor');
+   /*  Route::get('analytics-monthly-visitor', [NewAnalyticsController::class,"analyticsMonthlyVisitor"])->name('analytics.monthly.visitor');
     Route::get('analytics-bounce-rate', [NewAnalyticsController::class,"analyticsBounceRate"]);
     Route::get('analytics-three-month-visitor', [NewAnalyticsController::class,"analyticsThreeMonthVisitor"]);
     Route::get('analytics-thirty-day-visitor', [NewAnalyticsController::class,"analyticsThirtyDayVisitor"]);
     Route::get('analytics-twentyfour-hour-visitor', [NewAnalyticsController::class,"analyticsTwentyFourHourVisitor"]);
-    Route::get('analytics-now-on-page', [NewAnalyticsController::class,"analyticsNowOnPage"]);
+    Route::get('analytics-now-on-page', [NewAnalyticsController::class,"analyticsNowOnPage"]); */
     Route::get('analytics-total-user-registered', [NewAnalyticsController::class,"totalUserRegistered"]);
     Route::get('analytics-total-seven-day-visitor', [NewAnalyticsController::class,"analyticsTotalSevenDayVisitor"]);
     Route::get('analytics-total-seven-day-new-user',[NewAnalyticsController::class,"analyticsTotalSevenDayNewUser"]);
@@ -30,5 +30,10 @@ Route::prefix('v1')->name('api.')->group(function () {
 });
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
-    Route::apiResource('newanalytics', NewNewAnalyticsController::class)->names('newanalytics');
+    Route::get('analytics-monthly-visitor', [NewAnalyticsController::class,"analyticsMonthlyVisitor"])->name('analytics.monthly.visitor');
+    Route::get('analytics-bounce-rate', [NewAnalyticsController::class,"analyticsBounceRate"]);
+    Route::get('analytics-three-month-visitor', [NewAnalyticsController::class,"analyticsThreeMonthVisitor"]);
+    Route::get('analytics-thirty-day-visitor', [NewAnalyticsController::class,"analyticsThirtyDayVisitor"]);
+    Route::get('analytics-twentyfour-hour-visitor', [NewAnalyticsController::class,"analyticsTwentyFourHourVisitor"]);
+    Route::get('analytics-now-on-page', [NewAnalyticsController::class,"analyticsNowOnPage"]);
 });

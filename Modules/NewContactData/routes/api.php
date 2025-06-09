@@ -4,10 +4,10 @@ use Illuminate\Support\Facades\Route;
 use Modules\NewContactData\Http\Controllers\NewContactDataController;
 
 Route::prefix('v1')->name('api.')->group(function () {
-    Route::get('top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
+    /* Route::get('top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
     Route::get('top-five-purchase-pharmacies', [NewContactDataController::class, "topFivePurchasePharmacies"]);
     Route::get('contact-growth', [NewContactDataController::class, "contactGrowth"]);
-    Route::get('top-contact-card', [NewContactDataController::class, "topContactCard"]);
+    Route::get('top-contact-card', [NewContactDataController::class, "topContactCard"]); */
     Route::get("contact/pharmacy-data/all", [NewContactDataController::class, "allPharmacyData"]);
     Route::get("contact/pharmacy-data/id/{id}", [NewContactDataController::class, "pharmacyDataById"]);
     Route::post("contact/pharmacy-data/add", [NewContactDataController::class, "addPharmacyData"]);
@@ -39,7 +39,8 @@ Route::prefix('v1')->name('api.')->group(function () {
 });
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
-    Route::get('/sanctum',function(Request $request){
-        return response(["status"=>"success","message"=>"yes"],200);
-    });
+    Route::get('top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
+    Route::get('top-five-purchase-pharmacies', [NewContactDataController::class, "topFivePurchasePharmacies"]);
+    Route::get('contact-growth', [NewContactDataController::class, "contactGrowth"]);
+    Route::get('top-contact-card', [NewContactDataController::class, "topContactCard"]);
 });
