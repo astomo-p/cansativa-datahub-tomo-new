@@ -41,12 +41,13 @@ class NewAnalyticsController extends Controller
      */
     public function analyticsMonthlyVisitor()
     {
-            $year = date('Y');
+            $year = date('Y',strtotime("-1 Year"));
             $now = date('Y-m-d');
             $ranges = new DateRange(['start_date' => "$year-01-01", 'end_date' => $now]);
             $date_range = [$ranges];
             $dimensions = [
-                new Dimension(['name'=>'month'])
+                new Dimension(['name'=>'month']),
+                new Dimension(['name'=>'year'])
             ];
             $metrics = [
                 new Metric(['name'=>'totalUsers'])
@@ -60,6 +61,7 @@ class NewAnalyticsController extends Controller
             ]);
             $response = $this->analytics_client->runReport($request);
             $res = [];
+            $total_00 = 0;
             $total_01 = 0;
             $total_02 = 0;
             $total_03 = 0;
@@ -76,41 +78,46 @@ class NewAnalyticsController extends Controller
                 $dimension_value = $row->getDimensionValues();
                 $metrics_value = $row->getMetricValues();
                 $month = $dimension_value[0]->getValue();
+                $year = $dimension_value[1]->getValue();
+                $timestamp = $year . '-' . $month;
                
-                if($month == '01'){
+                if($timestamp == date('Y-m',strtotime('-12 Month'))){
+                  $total_00 += (int) $metrics_value[0]->getValue();
+                }
+                else if($timestamp == date('Y-m',strtotime('-11 Month'))){
                   $total_01 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '02'){
+                else if($timestamp == date('Y-m',strtotime('-10 Month'))){
                   $total_02 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '03'){
+                else if($timestamp == date('Y-m',strtotime('-9 Month'))){
                   $total_03 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '04'){
+                else if($timestamp == date('Y-m',strtotime('-8 Month'))){
                   $total_04 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '05'){
+                else if($timestamp == date('Y-m',strtotime('-7 Month'))){
                   $total_05 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '06'){
+                else if($timestamp == date('Y-m',strtotime('-6 Month'))){
                   $total_06 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '07'){
+                else if($timestamp == date('Y-m',strtotime('-5 Month'))){
                   $total_07 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '08'){
+                else if($timestamp == date('Y-m',strtotime('-4 Month'))){
                   $total_08 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '09'){
+                else if($timestamp == date('Y-m',strtotime('-3 Month'))){
                   $total_09 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '10'){
+                else if($timestamp == date('Y-m',strtotime('-2 Month'))){
                   $total_10 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '11'){
+                else if($timestamp == date('Y-m',strtotime('-1 Month'))){
                   $total_11 += (int) $metrics_value[0]->getValue();
                 }
-                else if($month == '12'){
+                else if($timestamp == date('Y-m')){
                   $total_12 += (int) $metrics_value[0]->getValue();
                 }
                
@@ -118,18 +125,19 @@ class NewAnalyticsController extends Controller
            // array_push($res,env('APP_URL'));
            // return response(["status"=>"success","data"=>$res],200);
            array_push($res,[
-            "January"=>$total_01,
-            "February"=>$total_02,
-            "March"=>$total_03,
-            "April"=>$total_04,
-            "May"=>$total_05,
-            "June"=>$total_06,
-            "July"=>$total_07,
-            "August"=>$total_08,
-            "September"=>$total_09,
-            "October"=>$total_10,
-            "November"=>$total_11,
-            "December"=>$total_12]);
+            date('Y F',strtotime('-12 Month'))=>$total_00,
+            date('Y F',strtotime('-11 Month'))=>$total_01,
+            date('Y F',strtotime('-10 Month'))=>$total_02,
+            date('Y F',strtotime('-9 Month'))=>$total_03,
+            date('Y F',strtotime('-8 Month'))=>$total_04,
+            date('Y F',strtotime('-7 Month'))=>$total_05,
+            date('Y F',strtotime('-6 Month'))=>$total_06,
+            date('Y F',strtotime('-5 Month'))=>$total_07,
+            date('Y F',strtotime('-4 Month'))=>$total_08,
+            date('Y F',strtotime('-3 Month'))=>$total_09,
+            date('Y F',strtotime('-2 Month'))=>$total_10,
+            date('Y F',strtotime('-1 Month'))=>$total_11,
+            date('Y F')=>$total_12]);
            return $this->successResponse($res, 'Analytics monthly visitor retrieved successfully',200);
     }
 
