@@ -251,7 +251,7 @@ class NewAnalyticsController extends Controller
     /**
      * return the thirty day visitor data from Google Analytics.
      */
-    public function analyticsThirtyDayVisitor()
+    public function analyticsThirtyDayVisitor(Request $request)
     {
         $year = date('Y');
         $now = date('Y-m-d');
@@ -264,21 +264,21 @@ class NewAnalyticsController extends Controller
         $metrics = [
             new Metric(['name'=>'activeUsers'])
         ];
-        $request = new RunReportRequest([
+        $request_ga = new RunReportRequest([
             'property' => 'properties/' . env('ANALYTICS_PROPERTY'),
             'date_ranges' => $date_range,
             'dimensions' => $dimensions,
             'metrics' => $metrics,
             'limit' => 100
         ]);
-        $response = $this->analytics_client->runReport($request);
+        $response = $this->analytics_client->runReport($request_ga);
         $res = [];
         $thirty_day = [];
-        $month = date('m');
         foreach ($response->getRows() as $row) {
             $dimension_value = $row->getDimensionValues();
             $metrics_value = $row->getMetricValues();
-            if($dimension_value[0]->getValue() == $month){
+            $month = is_null($request->prev_month) ? $dimension_value[0]->getValue() == date('m') : $dimension_value[0]->getValue() == date('m') || $dimension_value[0]->getValue() == date('m',strtotime('-1 month'));
+            if($month){
                 array_push($thirty_day,[
                 "month"=>$dimension_value[0]->getValue(),
                 "day"=>$dimension_value[1]->getValue(),
@@ -286,8 +286,45 @@ class NewAnalyticsController extends Controller
             ]);
             }
         }
+        $month_name = [
+            "01"=>"January",
+            "02"=>"February",
+            "03"=>"March",
+            "04"=>"April",
+            "05"=>"May",
+            "06"=>"June",
+            "07"=>"July",
+            "08"=>"August",
+            "09"=>"September",
+            "10"=>"October",
+            "11"=>"November",
+            "12"=>"December"
+        ];
         for($day = 1; $day < 31; $day++){
-            $active_users = 0;
+
+            if(!is_null($request->prev_month)){
+            foreach($thirty_day as $data){
+                if($data['day'] == $day && $data['month'] == date('m',strtotime('-1 Month'))){
+                   $active_users = (int) $data['active_users'];
+                    $day_code = $day < 10 ? '0'.$day : "$day";
+                    array_push($res,[
+                        "day"=>$month_name[$data['month']] . ' ' .$day_code,
+                        "active_users"=>$active_users
+                    ]);
+                } else if($data['day'] == $day && $data['month'] == date('m')){
+                   $active_users = (int) $data['active_users'];
+                    $day_code = $day < 10 ? '0'.$day : "$day";
+                    array_push($res,[
+                        "day"=>$month_name[$data['month']] . ' ' .$day_code,
+                        "active_users"=>$active_users
+                    ]);
+
+                }
+            }
+           
+            }
+
+           else { $active_users = 0;
             foreach($thirty_day as $data){
                 if($data['day'] == $day){
                    $active_users += (int) $data['active_users'];
@@ -298,6 +335,7 @@ class NewAnalyticsController extends Controller
                 "day"=>$day_code,
                 "active_users"=>$active_users
             ]);
+            }
             
         }
         return $this->successResponse($res, 'Analytics thirty day visitor retrieved successfully',200);
