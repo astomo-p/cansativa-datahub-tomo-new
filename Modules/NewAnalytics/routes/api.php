@@ -27,6 +27,8 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('analytics-total-twenty-four-hour-new-user',[NewAnalyticsController::class,"analyticsTotalTwentyFourHourNewUser"]);
     Route::get('analytics-total-twenty-four-hour-visitor',[NewAnalyticsController::class,"analyticsTotalTwentyFourHourVisitor"]);
     Route::get('analytics-average-time-onsite',[NewAnalyticsController::class,"analyticsAverageTimeOnsite"]);
+    Route::get('analytics-twentyfour-hour-yesterday-visitor',[NewAnalyticsController::class,"analyticsTwentyFourHourYesterdayVisitor"]);
+    Route::get('analytics-twentyfour-hour-yesterday-new-user',[NewAnalyticsController::class,"analyticsTwentyFourHourYesterdayNewUser"]);
 });
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {

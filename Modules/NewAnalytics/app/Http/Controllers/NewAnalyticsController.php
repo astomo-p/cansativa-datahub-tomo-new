@@ -958,7 +958,123 @@ class NewAnalyticsController extends Controller
        
        return $this->successResponse($res, 'Analytics average time onsite retrieved successfully',200);
     
-    } 
+    }
+    
+     /**
+     * return the twenty four hour yesterday visitor data from Google Analytics.
+     */
+    public function analyticsTwentyFourHourYesterdayVisitor()
+    {
+        $year = date('Y');
+        $now = date('Y-m-d');
+        $ranges = new DateRange(['start_date' => "$year-01-01", 'end_date' => $now]);
+        $date_range = [$ranges];
+        $dimensions = [
+            new Dimension(['name'=>'month']),
+            new Dimension(['name'=>'hour']),
+            new Dimension(['name'=>'day'])
+        ];
+        $metrics = [
+            new Metric(['name'=>'activeUsers'])
+        ];
+        $request = new RunReportRequest([
+            'property' => 'properties/' . env('ANALYTICS_PROPERTY'),
+            'date_ranges' => $date_range,
+            'dimensions' => $dimensions,
+            'metrics' => $metrics,
+            'limit' => 100
+        ]);
+        $response = $this->analytics_client->runReport($request);
+        $res = [];
+        $twenty_four_hour = [];
+        $month = date('m');
+        $day = date('d',strtotime("-1 Day"));
+        foreach ($response->getRows() as $row) {
+            $dimension_value = $row->getDimensionValues();
+            $metrics_value = $row->getMetricValues();
+            if($dimension_value[0]->getValue() == $month && $dimension_value[1]->getValue() == $day){
+                array_push($twenty_four_hour,[
+                "month"=>$dimension_value[0]->getValue(),
+                "hour"=>$dimension_value[1]->getValue(),
+                "day"=>$dimension_value[2]->getValue(),
+                "active_users"=>$metrics_value[0]->getValue()
+            ]);
+            }
+        }
+        for($hour = 0; $hour < 24; $hour++){
+            $active_users = 0;
+            foreach($twenty_four_hour as $data){
+                if($data['hour'] == $hour){
+                   $active_users += (int) $data['active_users'];
+                }
+            }
+            $hour_code = $hour < 10 ? '0'.$hour : "$hour";
+            array_push($res,[
+                "hour"=>$hour_code,
+                "active_users"=>$active_users
+            ]);
+            
+        }
+       return $this->successResponse($res, 'Analytics twenty four hour yesterday visitor retrieved successfully',200);
+    }
+
+     /**
+     * return the twenty four hour yesterday new user data from Google Analytics.
+     */
+    public function analyticsTwentyFourHourYesterdayNewUser()
+    {
+        $year = date('Y');
+        $now = date('Y-m-d');
+        $ranges = new DateRange(['start_date' => "$year-01-01", 'end_date' => $now]);
+        $date_range = [$ranges];
+        $dimensions = [
+            new Dimension(['name'=>'month']),
+            new Dimension(['name'=>'hour']),
+            new Dimension(['name'=>'day'])
+        ];
+        $metrics = [
+            new Metric(['name'=>'newUsers'])
+        ];
+        $request = new RunReportRequest([
+            'property' => 'properties/' . env('ANALYTICS_PROPERTY'),
+            'date_ranges' => $date_range,
+            'dimensions' => $dimensions,
+            'metrics' => $metrics,
+            'limit' => 100
+        ]);
+        $response = $this->analytics_client->runReport($request);
+        $res = [];
+        $twenty_four_hour = [];
+        $month = date('m');
+        $day = date('d',strtotime("-1 Day"));
+        foreach ($response->getRows() as $row) {
+            $dimension_value = $row->getDimensionValues();
+            $metrics_value = $row->getMetricValues();
+            if($dimension_value[0]->getValue() == $month && $dimension_value[1]->getValue() == $day){
+                array_push($twenty_four_hour,[
+                "month"=>$dimension_value[0]->getValue(),
+                "hour"=>$dimension_value[1]->getValue(),
+                "day"=>$dimension_value[2]->getValue(),
+                "active_users"=>$metrics_value[0]->getValue()
+            ]);
+            }
+        }
+        for($hour = 0; $hour < 24; $hour++){
+            $active_users = 0;
+            foreach($twenty_four_hour as $data){
+                if($data['hour'] == $hour){
+                   $active_users += (int) $data['active_users'];
+                }
+            }
+            $hour_code = $hour < 10 ? '0'.$hour : "$hour";
+            array_push($res,[
+                "hour"=>$hour_code,
+                "active_users"=>$active_users
+            ]);
+            
+        }
+       return $this->successResponse($res, 'Analytics twenty four hour yesterday new user retrieved successfully',200);
+    }
 
 
     /**
