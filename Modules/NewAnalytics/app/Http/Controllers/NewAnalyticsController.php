@@ -183,7 +183,7 @@ class NewAnalyticsController extends Controller
      */
     public function analyticsThreeMonthVisitor()
     {
-        $year = date('Y');
+        $year = date('Y',strtotime("-1 Year"));
         $now = date('Y-m-d');
         $ranges = new DateRange(['start_date' => "$year-01-01", 'end_date' => $now]);
         $date_range = [$ranges];
@@ -253,7 +253,7 @@ class NewAnalyticsController extends Controller
      */
     public function analyticsThirtyDayVisitor(Request $request)
     {
-        $year = date('Y');
+        $year = date('Y',strtotime("-1 Year"));
         $now = date('Y-m-d');
         $ranges = new DateRange(['start_date' => "$year-01-01", 'end_date' => $now]);
         $date_range = [$ranges];
@@ -1122,6 +1122,109 @@ class NewAnalyticsController extends Controller
        return $this->successResponse($res, 'Analytics twenty four hour yesterday new user retrieved successfully',200);
     }
 
+    /**
+     * Get Analytics select date range visitor
+     */
+
+public function analyticsSelectDateVisitor(Request $request)
+{
+    
+    $start_date = $request->start_date;
+    $end_date = $request->end_date;
+
+    $ranges = new DateRange(['start_date' => $start_date, 'end_date' => $end_date]);
+    $date_range = [$ranges];
+    $dimensions = [
+        new Dimension(['name'=>'month']),
+        new Dimension(['name'=>'day']),
+        new Dimension(['name'=>'year'])
+    ];
+    $metrics = [
+        new Metric(['name'=>'totalUsers'])
+    ];
+    $request = new RunReportRequest([
+        'property' => 'properties/' . env('ANALYTICS_PROPERTY'),
+        'date_ranges' => $date_range,
+        'dimensions' => $dimensions,
+        'metrics' => $metrics,
+        'limit' => 100
+    ]);
+    $response = $this->analytics_client->runReport($request);
+    $res = [];
+    $date_select = [];
+    foreach ($response->getRows() as $row) {
+        $dimension_value = $row->getDimensionValues();
+        $metrics_value = $row->getMetricValues();
+        array_push($date_select, [
+            "year" => $dimension_value[2]->getValue(),
+            "month" => $dimension_value[0]->getValue(),
+            "day" => $dimension_value[1]->getValue(),
+            "active_users" => (int) $metrics_value[0]->getValue()
+        ]);
+    }
+    foreach ($date_select as $data) {
+        $day = (int) $data['day'];
+        $month = (int) $data['month'];
+        $year = (int) $data['year'];
+        array_push($res, [
+            "date" => "$year-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-" . str_pad($day, 2, '0', STR_PAD_LEFT),
+            "vistor" => $data['active_users']
+        ]);
+    }
+        
+    
+    return $this->successResponse($res, 'Analytics selected date visitor retrieved successfully', 200);
+}
+
+/**
+ * Get analytics select date range new user
+ */
+
+public function analyticsSelectDateNewUser(Request $request)
+{
+    $start_date = $request->start_date;
+    $end_date = $request->end_date;
+    $ranges = new DateRange(['start_date' => $start_date, 'end_date' => $end_date]);
+    $date_range = [$ranges];
+    $dimensions = [
+        new Dimension(['name'=>'month']),
+        new Dimension(['name'=>'day']),
+        new Dimension(['name'=>'year'])
+    ];
+    $metrics = [
+        new Metric(['name'=>'newUsers'])
+    ];
+    $request = new RunReportRequest([
+        'property' => 'properties/' . env('ANALYTICS_PROPERTY'),
+        'date_ranges' => $date_range,
+        'dimensions' => $dimensions,
+        'metrics' => $metrics,
+        'limit' => 100
+    ]);
+    $response = $this->analytics_client->runReport($request);
+    $res = [];
+    $date_select = [];      
+    foreach ($response->getRows() as $row) {
+        $dimension_value = $row->getDimensionValues();
+        $metrics_value = $row->getMetricValues();
+        array_push($date_select, [
+            "year" => $dimension_value[2]->getValue(),
+            "month" => $dimension_value[0]->getValue(),
+            "day" => $dimension_value[1]->getValue(),
+            "active_users" => (int) $metrics_value[0]->getValue()
+        ]);
+    }
+    foreach ($date_select as $data) {
+        $day = (int) $data['day'];
+        $month = (int) $data['month'];
+        $year = (int) $data['year'];
+        array_push($res, [
+            "date" => "$year-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-" . str_pad($day, 2, '0', STR_PAD_LEFT),
+            "new_user" => $data['active_users']
+        ]);
+    }
+    return $this->successResponse($res, 'Analytics selected date new user retrieved successfully', 200);
+}
 
     /**
      * Display a listing of the resource.
