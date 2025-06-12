@@ -220,7 +220,7 @@ class NewContactDataController extends Controller
             ]);
         }
         else {
-            return $this->error('Invalid type',400);
+            return $this->errorResponse('Invalid type',400);
         }
             
        return $this->successResponse($res,'Top contact card',200);

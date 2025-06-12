@@ -85,5 +85,141 @@ class ContactDataController extends Controller
        return $this->successResponse($res,'Top five purchase pharmacies',200);
     }
 
+    /**
+     * Get contact growth.
+     *
+     * @return Response
+     */
+    public function contactGrowth(Request $request)
+    {
+        $now = date('Y');
+        $months = [
+            1 => 'January',
+            2 => 'February',   
+            3 => 'March',
+            4 => 'April',
+            5 => 'May',
+            6 => 'June',
+            7 => 'July',
+            8 => 'August',
+            9 => 'September',
+            10 => 'October',
+            11 => 'November',
+            12 => 'December'
+        ];
+
+        //pharmacy
+        $pharmacy = [];
+        for($i = 1; $i <= 12; $i++){
+            $pharmacy[$i] = ContactTypes::find($this->contact_pharmacy->id)->contacts()
+            ->whereMonth('created_date', $i)
+            ->whereYear('created_date', $now)
+            ->count();
+        }
+        $pharmacy_result = [];
+        foreach($pharmacy as $key => $value){
+            $pharmacy_result[$months[$key]] = (int) $value;
+        }
+
+        //supplier
+        $supplier = [];
+        for($i = 1; $i <= 12; $i++){
+            $supplier[$i] = ContactTypes::find($this->contact_supplier->id)->contacts()
+            ->whereMonth('created_date', $i)
+            ->whereYear('created_date', $now)
+            ->count();
+        }
+        $supplier_result = [];
+        foreach($supplier as $key => $value){
+            $supplier_result[$months[$key]] = (int) $value;
+        }
+
+        //community
+        $community = [];
+        for($i = 1; $i <= 12; $i++){
+            $community[$i] = ContactTypes::find($this->contact_community->id)->contacts()
+            ->whereMonth('created_date', $i)
+            ->whereYear('created_date', $now)
+            ->count();
+        }
+        $community_result = [];
+        foreach($community as $key => $value){
+            $community_result[$months[$key]] = (int) $value;
+        }
+
+        //general newsletter
+        $general_newsletter = [];
+        for($i = 1; $i <= 12; $i++){
+            $general_newsletter[$i] = ContactTypes::find($this->contact_general_newsletter->id)->contacts()
+            ->whereMonth('created_date', $i)
+            ->whereYear('created_date', $now)
+            ->count();
+        }
+        $general_newsletter_result = [];
+        foreach($general_newsletter as $key => $value){
+            $general_newsletter_result[$months[$key]] = (int) $value;
+        }
+
+        //pharmacy db
+        $pharmacy_db = [];
+        for($i = 1; $i <= 12; $i++){
+            $pharmacy_db[$i] = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            ->whereMonth('created_date', $i)
+            ->whereYear('created_date', $now)
+            ->count();
+        }
+        $pharmacy_db_result = [];
+        foreach($pharmacy_db as $key => $value){
+            $pharmacy_db_result[$months[$key]] = (int) $value;
+        }
+
+        $res = [
+          'Pharmacies' => $pharmacy_result,
+          'Suppliers' => $supplier_result,
+          'General Newsletter' => $general_newsletter_result,
+          'Community' => $community_result,
+          'Pharmacy Database' => $pharmacy_db_result
+        ];
+       return $this->successResponse($res,'Contact growth',200);
+    }
+
+     /**
+     * Get top contact card.
+     *
+     * @return Response
+     */
+    public function topContactCard(Request $request)
+    {
+        $res = [];
+        if($request->type == 'pharmacies'){
+            array_push($res, [
+                'total' => 1000,
+                'delta' => '+100',
+            ]);
+        }
+        else if($request->type == 'distributors'){
+            array_push($res, [
+                'total' => 500,
+                'delta' => '-20',
+            ]);
+        }
+        else if($request->type == 'subscribers'){
+            array_push($res, [
+                'total' => 20000,
+                'delta' => '+20',
+            ]);
+        }
+        else if($request->type == 'pharmacy-contacts'){
+            array_push($res, [
+                'total' => 150,
+                'delta' => '-50',
+            ]);
+        }
+        else {
+            return $this->errorResponse('Invalid type',400);
+        }
+            
+       return $this->successResponse($res,'Top contact card',200);
+    }
 
 }
