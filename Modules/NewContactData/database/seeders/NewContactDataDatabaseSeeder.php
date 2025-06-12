@@ -17,7 +17,7 @@ class NewContactDataDatabaseSeeder extends Seeder
        $this->call([
             SeedPlacePublishSeeder::class,
             SeedContactTypeSeeder::class,
-            SeedContactSeeder::class,
+            SeedContactSeederSeeder::class,
         ]);
     }
 }
