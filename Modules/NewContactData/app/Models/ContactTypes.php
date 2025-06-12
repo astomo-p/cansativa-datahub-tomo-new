@@ -4,7 +4,7 @@ namespace Modules\NewContactData\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Contacts;
+use Modules\NewContactData\Models\Contacts;
 // use Modules\NewContactData\Database\Factories\ContactTypesFactory;
 
 class ContactTypes extends Model
