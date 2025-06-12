@@ -60,4 +60,30 @@ class ContactDataController extends Controller
         }
        return $this->successResponse($res,'Top five area pharmacies',200);
     }
+
+    /**
+     * Get top five purchase pharmacies.
+     *
+     * @return Response
+     */
+    public function topFivePurchasePharmacies(Request $request)
+    {
+       
+        $results = ContactTypes::find(1)->contacts()
+        ->select('contacts.contact_name','contacts.total_purchase')
+        ->where('contacts.is_deleted', 'false')
+        ->orderBy('total_purchase', 'desc')
+        ->take(5)
+        ->get();
+        $res = [];
+        foreach( $results as $result ){
+            $res[] = [
+                'pharmacy_name' => $result->contact_name,
+                'total_purchase' => (int) $result->total_purchase
+            ];
+        }
+       return $this->successResponse($res,'Top five purchase pharmacies',200);
+    }
+
+
 }

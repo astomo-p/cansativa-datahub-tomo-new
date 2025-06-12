@@ -4,6 +4,7 @@ namespace Modules\NewContactData\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Contacts;
 // use Modules\NewContactData\Database\Factories\ContactTypesFactory;
 
 class ContactTypes extends Model
@@ -17,7 +18,7 @@ class ContactTypes extends Model
 
      /** relation */
 
-    public function contacts(): HasMany
+    public function contacts()
     {
         return $this->hasMany(Contacts::class, 'contact_type_id', 'id');
     }
