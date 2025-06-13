@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\ContactTypes;
 use App\Models\Contacts;
+use Illuminate\Support\Facades\Validator;
 
 class ContactDataController extends Controller
 {
@@ -287,17 +288,18 @@ class ContactDataController extends Controller
 
      public function addCommunityData(Request $request)
      {
-        // Validate the request
-        $request->validate([
+       
+        // Validate the request data
+        $validate = Validator::make($request->all(), [
             'contact_name' => 'required|string|max:255',
             'contact_no' => 'required|string|max:20',
             'email' => 'required|email|max:255',
-            'post_code' => 'required|string|max:10',
             'address' => 'nullable|string|max:255',
+            'post_code' => 'nullable|string|max:10',
         ]);
 
-        if($request->error('contact_name')){
-            return $this->errorResponse('Invalid contact name',422);
+        if ($validate->fails()) {
+            return $this->errorResponse($validate->errors(), 422);
         }
 
         return $this->successResponse([],
