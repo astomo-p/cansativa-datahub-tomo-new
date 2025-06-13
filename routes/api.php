@@ -9,7 +9,12 @@ Route::controller(ContactDataController::class)->prefix('v1')->group(function ()
     Route::get('/datahub/b2c/contact/top-five-purchase-pharmacies', 'topFivePurchasePharmacies');
     Route::get('/datahub/b2c/contact/contact-growth', 'contactGrowth');
     Route::get('/datahub/b2c/contact/top-contact-card', 'topContactCard');
-});
+    Route::get('/datahub/b2c/contact/community-data/all', 'allCommunityData');
+    Route::get('/datahub/b2c/contact/community-data/id/{id}', 'communityDataById');
+    Route::post('/datahub/b2c/contact/community-data/add', 'addCommunityData');
+    Route::put('/datahub/b2c/contact/community-data/id/{id}', 'updateCommunityDataById');
+    Route::delete('/datahub/b2c/contact/community-data/id/{id}', 'deleteCommunityDataById');
+    });
 
 Route::get('/user', function (Request $request) {
     return $request->user();

@@ -222,4 +222,88 @@ class ContactDataController extends Controller
        return $this->successResponse($res,'Top contact card',200);
     }
 
+     /**
+     * Get all community data.
+     */
+
+    public function allCommunityData(Request $request)
+    {
+
+        // default pagination setup
+        $sort_column = explode('-',$request->get('sort', 'asc'))[0] ?? 'contacts.id';
+        $sort_direction = explode('-',$request->get('sort', 'asc'))[1] ?? 'asc';
+        $start = $request->get('start', 0);
+        $length = $request->get('length', 10);
+        $search = $request->get('search');
+
+        //basic response metrics
+        $records_total = ContactTypes::find($this->contact_community->id)->contacts()
+        ->where('contacts.is_deleted', 'false')
+        ->count();
+        $records_filtered = $records_total;
+
+        if($search){
+            $search = trim($search);
+            $results = ContactTypes::find($this->contact_community->id)->contacts()
+            ->where(function($query) use ($search) {
+                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
+            })
+            ->where('contacts.is_deleted', 'false')
+            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->take($length)
+            ->skip($start)
+            ->get();
+            $records_filtered = ContactTypes::find($this->contact_community->id)->contacts()
+            ->where(function($query) use ($search) {
+                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
+            })
+            ->count();
+        } else {
+            $results = ContactTypes::find($this->contact_community->id)->contacts()
+            ->where('contacts.is_deleted', 'false')
+            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->take($length)
+            ->skip($start)
+            ->get();
+        }
+
+        
+        $res = [
+            'recordsTotal' => $records_total,
+            'recordsFiltered' => $records_filtered,
+            'data' => $results
+        ];
+       
+       return $this->successResponse($res,'All community data',200);
+    }
+
+    /**
+     * add community data
+     */
+
+     public function addCommunityData(Request $request)
+     {
+        // Validate the request
+        $request->validate([
+            'contact_name' => 'required|string|max:255',
+            'contact_no' => 'required|string|max:20',
+            'email' => 'required|email|max:255',
+            'post_code' => 'required|string|max:10',
+            'address' => 'nullable|string|max:255',
+        ]);
+
+        if($request->error('contact_name')){
+            return $this->errorResponse('Invalid contact name',422);
+        }
+
+        return $this->successResponse([],
+            'Community data added successfully',
+            201
+        );
+     }
+
 }
