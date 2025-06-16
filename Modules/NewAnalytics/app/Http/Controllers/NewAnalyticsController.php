@@ -1226,6 +1226,21 @@ public function analyticsSelectDateNewUser(Request $request)
     return $this->successResponse($res, 'Analytics selected date new user retrieved successfully', 200);
 }
 
+/**
+ * Generate signature
+ */
+
+ public function generateSignature(Request $request)
+ {
+    $apiToken = env('API_TOKEN');
+
+    $payload = $request->all();
+
+    $signature = hash_hmac('sha256', json_encode($payload, JSON_THROW_ON_ERROR), $apiToken);
+        
+    return $this->successResponse(['signature' => $signature], 'Signature generated successfully', 200);
+ }
+
     /**
      * Display a listing of the resource.
      */
