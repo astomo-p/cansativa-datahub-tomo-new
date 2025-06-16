@@ -5,6 +5,11 @@ use Modules\NewAnalytics\Http\Controllers\NewAnalyticsController;
 use App\Http\Middleware\ValidateSignature;
 
 Route::prefix('v1')->name('api.')->group(function () {
+    Route::post('/analytics/generate-signature', [NewAnalyticsController::class, 'generateSignature']);
+});
+
+
+Route::middleware([ValidateSignature::class])->prefix('v1')->name('api.')->group(function () {
     Route::get('/analytics/analytics-monthly-visitor', [NewAnalyticsController::class,"analyticsMonthlyVisitor"])->name('analytics.monthly.visitor');
     Route::get('/analytics/analytics-bounce-rate', [NewAnalyticsController::class,"analyticsBounceRate"]);
     Route::get('/analytics/analytics-three-month-visitor', [NewAnalyticsController::class,"analyticsThreeMonthVisitor"]);
@@ -32,8 +37,7 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('/analytics/analytics-twentyfour-hour-yesterday-new-user',[NewAnalyticsController::class,"analyticsTwentyFourHourYesterdayNewUser"]);
     Route::get('/analytics/analytics-select-date-visitor',[NewAnalyticsController::class,"analyticsSelectDateVisitor"]);
     Route::get('/analytics/analytics-select-date-new-user',[NewAnalyticsController::class,"analyticsSelectDateNewUser"]);
-    Route::post('/analytics/generate-signature', [NewAnalyticsController::class, 'generateSignature']);
-})->middleware(ValidateSignature::class);
+    });
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     /* Route::get('analytics-monthly-visitor', [NewAnalyticsController::class,"analyticsMonthlyVisitor"])->name('analytics.monthly.visitor');

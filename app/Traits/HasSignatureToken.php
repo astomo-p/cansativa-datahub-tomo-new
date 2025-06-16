@@ -8,17 +8,15 @@ trait HasSignatureToken
     /** 
      * validate signature token
      */
-    public function validateSignatureToken($apiToken)
+    public function validateSignatureToken($apiToken,$signature,$payloads)
     {
-
-        $payloads = Request::all();
 
         $expected = hash_hmac('sha256', json_encode($payloads, JSON_THROW_ON_ERROR), $apiToken);
 
-        if ($expected !== Request::header('Signature')) {
-            return false;
+        if ($expected !== $signature) {
+            return [$expected, $signature, $payloads];
         } else {
-            return true;
+            return null;
         }
     
 

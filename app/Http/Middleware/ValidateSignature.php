@@ -16,13 +16,20 @@ class ValidateSignature
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->hasHeader('Signature')) {
-            throw new Exception('Missing signature header');
+        if (!$request->hasHeader('Authorization')) {
+            return response()->json([
+                'message' => 'Missing Authorization or Signature header'
+            ], 400);
+
         }
 
         $apiToken = env('API_TOKEN');
-        if(!$this->validateSignatureToken($apiToken)){
-            throw new Exception('Invalid signature token');
+        $validated = $this->validateSignatureToken($apiToken, $request->bearerToken(), $request->all());
+        if(!is_null($validated)) {
+            return response()->json([
+                'message' => 'Invalid signature token',
+                'data' => $validated
+            ], 401);
         }
         return $next($request);
     }
