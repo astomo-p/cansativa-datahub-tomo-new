@@ -14,7 +14,7 @@ trait HasSignatureToken
         $expected = hash_hmac('sha256', json_encode($payloads, JSON_THROW_ON_ERROR), $apiToken);
 
         if ($expected !== $signature) {
-            return [$expected, $signature, $payloads];
+            return [$signature, $payloads];
         } else {
             return null;
         }

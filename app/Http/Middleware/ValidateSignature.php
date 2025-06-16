@@ -23,7 +23,7 @@ class ValidateSignature
 
         }
 
-        $apiToken = env('API_TOKEN');
+        $apiToken = 'dummy-auth';
         $validated = $this->validateSignatureToken($apiToken, $request->bearerToken(), $request->all());
         if(!is_null($validated)) {
             return response()->json([

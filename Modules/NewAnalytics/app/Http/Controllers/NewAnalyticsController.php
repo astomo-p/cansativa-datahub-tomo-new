@@ -1232,7 +1232,7 @@ public function analyticsSelectDateNewUser(Request $request)
 
  public function generateSignature(Request $request)
  {
-    $apiToken = env('API_TOKEN');
+    $apiToken = 'dummy-auth';
 
     $payload = $request->all();
 
