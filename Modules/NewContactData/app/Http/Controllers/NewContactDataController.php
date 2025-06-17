@@ -925,24 +925,31 @@ class NewContactDataController extends Controller
                 [
                         'timeout' => '29',
                         'wp_api' => true,
-                        'version' => 'wc/v3'
+                        'version' => 'wc/v2'
                 ]
                 );        
-      $woo_response = $woocommerce->get('customers');
-       /*   // $id = Contacts::orderBy('id','desc')->first()->id;
+      $woo_response = $woocommerce->get('customers?per_page=15');
+         // $id = Contacts::orderBy('id','desc')->first()->id;
         $last_id = 0;
         foreach($woo_response as $key){
        // $last_id = $last_id == 0 ? $id + 1 : $last_id + 1;
+        $check = Contacts::where('email', $key->billing->email)
+        ->where('contact_name', $key->billing->company)
+        ->first();
+        if($check){
+            continue; // Skip if contact already exists
+        }
         DB::beginTransaction();
         try {
         $contact = new Contacts();
        // $contact->id = $last_id ;
         $contact->contact_name = $key->billing->company;
         $contact->contact_no = "";
-        $contact->address = "-";
+        $contact->address = $key->billing->address_1 . " " . $key->billing->address_2;
         $contact->post_code = $key->billing->postcode;
         $contact->city = $key->billing->city;
         $contact->country = $key->billing->country;
+        $contact->state = $key->billing->state;
         $contact->contact_person = "-";
         $contact->email = $key->billing->email;
         $contact->phone_no = "-";
@@ -965,11 +972,11 @@ class NewContactDataController extends Controller
             DB::rollback();
             return $this->errorResponse('Error',500, $e->message);
         }
-        } */
+        } 
 
         return $this->successResponse([
             //'type' => dump($woo_response),
-          $woo_response,
+         // $woo_response,
          //  $last_id,
            "tes"
         ],'Success',200);
