@@ -32,6 +32,7 @@ class NewContactDataController extends Controller
     private $contact_community = 0;
     private $contact_general_newsletter = 0;
     private $contact_pharmacy_db = 0;
+    private $contact_subscriber = 0;
 
     /**
      * constructor
@@ -43,6 +44,7 @@ class NewContactDataController extends Controller
         $this->contact_community = ContactTypes::where('contact_type_name', 'COMMUNITY')->first();
         $this->contact_general_newsletter = ContactTypes::where('contact_type_name', 'GENERAL NEWSLETTER')->first();
         $this->contact_pharmacy_db = ContactTypes::where('contact_type_name', 'PHARMACY DATABASE')->first();
+        $this->contact_subscriber = ContactTypes::where('contact_type_name', 'SUBSCRIBER')->first();
     }
     
     /**
@@ -880,6 +882,131 @@ class NewContactDataController extends Controller
 
         return $this->successResponse(null,'Pharmacy database data deleted successfully',200);
      }
+
+
+     /**
+      * Add subscriber data
+      */
+
+        public function addSubscriberData(Request $request)
+        {
+            $request_data = json_decode($request->getContent(), true);
+
+            // Create the contact
+           // Contacts::create($request_data);
+           Contacts::insert($request_data);
+
+            return $this->successResponse(null,'Subscriber data added successfully',200);
+        }
+
+
+        /**
+         *  Get all subscriber data
+         */
+
+         public function allSubscriberData(Request $request)
+         {
+            // default pagination setup
+            $sort_column = explode('-',$request->get('sort', 'asc'))[0] ?? 'contacts.id';
+            $sort_direction = explode('-',$request->get('sort', 'asc'))[1] ?? 'asc';
+            $start = $request->get('start', 0);
+            $length = $request->get('length', 10);
+            $search = $request->get('search');
+
+            //basic response metrics
+            $records_total = ContactTypes::find($this->contact_subscriber->id)->contacts()
+            ->where('contacts.is_deleted', 'false')
+            ->count();
+            $records_filtered = $records_total;
+
+            if($search){
+            $search = trim($search);
+            $results = ContactTypes::find($this->contact_subscriber->id)->contacts()
+            ->where(function($query) use ($search) {
+                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
+            })
+            ->where('contacts.is_deleted', 'false')
+            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->take($length)
+            ->skip($start)
+            ->get();
+            $records_filtered = ContactTypes::find($this->contact_subscriber->id)->contacts()
+            ->where(function($query) use ($search) {
+                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
+            })
+            ->where('contacts.is_deleted', 'false')
+            ->count();
+        } else {
+            $results = ContactTypes::find($this->contact_subscriber->id)->contacts()
+            ->where('contacts.is_deleted', 'false')
+            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->take($length)
+            ->skip($start)
+            ->get();
+        }
+
+            $res = [
+                'recordsTotal' => $records_total,
+                'recordsFiltered' => $records_filtered,
+                'data' => $results
+            ];
+
+           return $this->successResponse($res,'All subscriber data',200);
+         }       
+
+    /**
+     * update subscriber data by ID
+     */     
+
+                public function updateSubscriberDataById(Request $request, $id)
+                {
+                    $result = Contacts::find($id);
+                    if(!$result){
+                        return $this->errorResponse('Error',404, 'Subscriber not found');
+                    }
+                    $request_data = json_decode($request->getContent(), true);
+
+                    // Update the contact
+                   Contacts::where('id', $id)->update($request_data);
+
+                    return $this->successResponse(null,'Subscriber data updated successfully',200);
+                }
+
+    /**
+     * Get subscriber data by ID
+     */
+
+    public function subscriberDataById($id)
+    {
+        $result = Contacts::find($id);
+        if(!$result){
+            return $this->errorResponse('Error',404, 'Subscriber not found');
+        }
+       return $this->successResponse($result,'Subscriber data by ID',200);
+    }
+
+    /**
+     * Delete subscriber data by ID
+     */
+
+    public function deleteSubscriberDataById($id)
+    {
+        $result = Contacts::find($id);
+        if(!$result){
+            return $this->errorResponse('Error',404, 'Subscriber not found');
+        }
+
+        // Soft delete the contact
+        $result->is_deleted = true;
+        $result->save();
+
+        return $this->successResponse(null,'Subscriber data deleted successfully',200);
+    }
+
 
     /**
      * Upload file to MinIO.
