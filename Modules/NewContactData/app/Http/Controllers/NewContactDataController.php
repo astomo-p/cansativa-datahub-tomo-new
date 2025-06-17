@@ -180,12 +180,26 @@ class NewContactDataController extends Controller
             $pharmacy_db_result[$months[$key]] = (int) $value;
         }
 
+        //subscriber
+        $subscriber = [];
+        for($i = 1; $i <= 12; $i++){
+            $subscriber[$i] = ContactTypes::find($this->contact_subscriber->id)->contacts()
+            ->whereMonth('created_date', $i)
+            ->whereYear('created_date', $now)
+            ->count();
+        }
+        $subscriber_result = [];
+        foreach($subscriber as $key => $value){
+            $subscriber_result[$months[$key]] = (int) $value;
+        }
+
         $res = [
-          'Pharmacies' => $pharmacy_result,
-          'Suppliers' => $supplier_result,
+          //'Pharmacies' => $pharmacy_result,
+          //'Suppliers' => $supplier_result,
           'General Newsletter' => $general_newsletter_result,
           'Community' => $community_result,
-          'Pharmacy Database' => $pharmacy_db_result
+          //'Pharmacy Database' => $pharmacy_db_result,
+          'Subscriber' => $subscriber_result
         ];
        return $this->successResponse($res,'Contact growth',200);
     }
@@ -197,7 +211,7 @@ class NewContactDataController extends Controller
     public function topContactCard(Request $request)
     {
         $res = [];
-        if($request->type == 'pharmacies'){
+        /* if($request->type == 'pharmacies'){
             array_push($res, [
                 'total' => 1000,
                 'delta' => '+100',
@@ -209,16 +223,73 @@ class NewContactDataController extends Controller
                 'delta' => '-20',
             ]);
         }
-        else if($request->type == 'subscribers'){
-            array_push($res, [
-                'total' => 20000,
-                'delta' => '+20',
-            ]);
-        }
         else if($request->type == 'pharmacy-contacts'){
             array_push($res, [
                 'total' => 150,
                 'delta' => '-50',
+            ]);
+        }
+         else  */
+         if($request->type == 'subscribers'){
+
+            $prev_month = date('m',strtotime('-1 Month'));
+            $current_month = date('m');
+
+            $prev_month_count = ContactTypes::find($this->contact_subscriber->id)->contacts()
+            ->whereMonth('created_date', $prev_month)
+            ->count();
+
+            $current_month_count = ContactTypes::find($this->contact_subscriber->id)->contacts()
+            ->whereMonth('created_date', $current_month)
+            ->count();
+
+            $diff =  $current_month_count - $prev_month_count;
+
+
+            array_push($res, [
+                'total' => $current_month_count,
+                'delta' => $diff > 0 ? '+'.$diff : $diff,
+            ]);
+        }
+        else if($request->type == 'community'){
+
+            $prev_month = date('m',strtotime('-1 Month'));
+            $current_month = date('m');
+
+            $prev_month_count = ContactTypes::find($this->contact_community->id)->contacts()
+            ->whereMonth('created_date', $prev_month)
+            ->count();
+
+            $current_month_count = ContactTypes::find($this->contact_community->id)->contacts()
+            ->whereMonth('created_date', $current_month)
+            ->count();
+
+            $diff =  $current_month_count - $prev_month_count;
+
+
+            array_push($res, [
+                'total' => $current_month_count,
+                'delta' => $diff > 0 ? '+'.$diff : $diff,
+            ]);
+        }
+        else if($request->type == 'general-newsletters'){
+            $prev_month = date('m',strtotime('-1 Month'));
+            $current_month = date('m');
+
+            $prev_month_count = ContactTypes::find($this->contact_general_newsletter->id)->contacts()
+            ->whereMonth('created_date', $prev_month)
+            ->count();
+
+            $current_month_count = ContactTypes::find($this->contact_general_newsletter->id)->contacts()
+            ->whereMonth('created_date', $current_month)
+            ->count();
+
+            $diff =  $current_month_count - $prev_month_count;
+
+
+            array_push($res, [
+                'total' => $current_month_count,
+                'delta' => $diff > 0 ? '+'.$diff : $diff,
             ]);
         }
         else {
