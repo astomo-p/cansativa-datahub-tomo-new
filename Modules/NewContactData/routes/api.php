@@ -4,11 +4,12 @@ use Illuminate\Support\Facades\Route;
 use Modules\NewContactData\Http\Controllers\NewContactDataController;
 
 Route::prefix('v1')->name('api.')->group(function () {
-    Route::get('datahub/b2c/contact/top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
-    Route::get('datahub/b2c/contact/top-five-purchase-pharmacies', [NewContactDataController::class, "topFivePurchasePharmacies"]);
+    //Route::get('datahub/b2c/contact/top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
+    //Route::get('datahub/b2c/contact/top-five-purchase-pharmacies', [NewContactDataController::class, "topFivePurchasePharmacies"]);
     Route::get('datahub/b2c/contact/contact-growth', [NewContactDataController::class, "contactGrowth"]);
     Route::get('datahub/b2c/contact/top-contact-card', [NewContactDataController::class, "topContactCard"]);
-    
+    Route::get('datahub/b2c/contact/top-five-area-community',[NewContactDataController::class,'topFiveAreaCommunity']);
+
     /* Route::get("datahub/b2c/contact/pharmacy-data/all", [NewContactDataController::class, "allPharmacyData"]);
     Route::get("datahub/b2c/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "pharmacyDataById"]);
     Route::post("datahub/b2c/contact/pharmacy-data/add", [NewContactDataController::class, "addPharmacyData"]);

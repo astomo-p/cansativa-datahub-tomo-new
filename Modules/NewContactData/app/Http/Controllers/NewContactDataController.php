@@ -46,6 +46,30 @@ class NewContactDataController extends Controller
         $this->contact_pharmacy_db = ContactTypes::where('contact_type_name', 'PHARMACY DATABASE')->first();
         $this->contact_subscriber = ContactTypes::where('contact_type_name', 'SUBSCRIBER')->first();
     }
+
+    /**
+     * Get top five area community
+     */
+
+     public function topFiveAreaCommunity(Request $request)
+     {
+        $results = ContactTypes::find($this->contact_community->id)->contacts()
+        ->selectRaw("contacts.post_code,COUNT(contacts.post_code) AS total_community")
+        ->where('contacts.is_deleted', 'false')
+        ->orderBy('total_community', 'desc')
+        ->groupBy('contacts.post_code')
+        ->take(5)->get();
+        $res = [];
+        foreach( $results as $result ){
+            $res[] = [
+                'post_code' => $result->post_code,
+                'total_community' => (int) $result->total_community
+            ];
+        }
+       return $this->successResponse($res,'Top five area community',200);
+     }
+
+
     
     /**
      * Get top five pharmacies.
