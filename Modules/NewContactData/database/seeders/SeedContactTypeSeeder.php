@@ -13,8 +13,8 @@ class SeedContactTypeSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table("contact_types")->insert([
-            //"id" => 3,
+        if(!DB::table('contact_types')->where('contact_type_name', 'PHARMACY')->exists()) {
+            DB::table("contact_types")->insert([
             "contact_type_name" => "PHARMACY",
             "recipient_type" => "ipsum",
             "created_by" => 13,
@@ -22,6 +22,9 @@ class SeedContactTypeSeeder extends Seeder
             "updated_by" => 13,
             "updated_date" => now(),
         ]);
+        }
+        
+         if(!DB::table('contact_types')->where('contact_type_name', 'SUPPLIER')->exists()) {
          DB::table("contact_types")->insert([
             //"id" => 3,
             "contact_type_name" => "SUPPLIER",
@@ -31,6 +34,9 @@ class SeedContactTypeSeeder extends Seeder
             "updated_by" => 13,
             "updated_date" => now(),
         ]);
+        }
+
+         if(!DB::table('contact_types')->where('contact_type_name', 'GENERAL NEWSLETTER')->exists()) {
          DB::table("contact_types")->insert([
             //"id" => 3,
             "contact_type_name" => "GENERAL NEWSLETTER",
@@ -40,6 +46,9 @@ class SeedContactTypeSeeder extends Seeder
             "updated_by" => 13,
             "updated_date" => now(),
         ]);
+        }
+
+            if(!DB::table('contact_types')->where('contact_type_name', 'COMMUNITY')->exists()) {    
          DB::table("contact_types")->insert([
             //"id" => 3,
             "contact_type_name" => "COMMUNITY",
@@ -49,6 +58,9 @@ class SeedContactTypeSeeder extends Seeder
             "updated_by" => 13,
             "updated_date" => now(),
         ]);
+        }
+
+        if(!DB::table('contact_types')->where('contact_type_name', 'PHARMACY DATABASE')->exists()) {
          DB::table("contact_types")->insert([
             //"id" => 3,
             "contact_type_name" => "PHARMACY DATABASE",
@@ -58,5 +70,18 @@ class SeedContactTypeSeeder extends Seeder
             "updated_by" => 13,
             "updated_date" => now(),
         ]);
+        }
+
+         if(!DB::table('contact_types')->where('contact_type_name', 'SUBSCRIBER')->exists()) {
+         DB::table("contact_types")->insert([
+            //"id" => 3,
+            "contact_type_name" => "SUBSCRIBER",
+            "recipient_type" => "ipsum",
+            "created_by" => 13,
+            "created_date" => now(),
+            "updated_by" => 13,
+            "updated_date" => now(),
+        ]);
+        }
     }
 }
