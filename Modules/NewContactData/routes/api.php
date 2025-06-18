@@ -4,23 +4,30 @@ use Illuminate\Support\Facades\Route;
 use Modules\NewContactData\Http\Controllers\NewContactDataController;
 
 Route::prefix('v1')->name('api.')->group(function () {
+    Route::get('datahub/b2b/contact/pharmacy-database/parent/{parentId}', [NewContactDataController::class, "pharmacyDatabaseByParentId"]);
+    Route::post('datahub/b2b/contact/pharmacy-database/add', [NewContactDataController::class, "addPharmacyDatabase"]);
+    Route::get('datahub/b2b/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "pharmacyDatabaseByParentIdAndId"]);
+    Route::put('datahub/b2b/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "updatePharmacyDatabaseByParentIdAndId"]);
+    Route::delete('datahub/b2b/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "deletePharmacyDatabaseByParentIdAndId"]);
+    Route::get("datahub/b2b/contact/pharmacy-data/all", [NewContactDataController::class, "allPharmacyData"]);
+    Route::get("datahub/b2b/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "pharmacyDataById"]);
+    Route::post("datahub/b2b/contact/pharmacy-data/add", [NewContactDataController::class, "addPharmacyData"]);
+    Route::put("datahub/b2b/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "updatePharmacyDataById"]);
+    Route::delete("datahub/b2b/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "deletePharmacyDataById"]);
+    Route::get('datahub/b2b/contact/supplier-data/all', [NewContactDataController::class, "allSupplierData"]);
+    Route::get('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "supplierDataById"]);
+    Route::post('datahub/b2b/contact/supplier-data/add', [NewContactDataController::class, "addSupplierData"]);
+    Route::put('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "updateSupplierDataById"]);
+    Route::delete('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "deleteSupplierDataById"]);
+});
+
+Route::prefix('v1')->name('api.')->group(function () {
     //Route::get('datahub/b2c/contact/top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
     //Route::get('datahub/b2c/contact/top-five-purchase-pharmacies', [NewContactDataController::class, "topFivePurchasePharmacies"]);
     Route::get('datahub/b2c/contact/contact-growth', [NewContactDataController::class, "contactGrowth"]);
     Route::get('datahub/b2c/contact/top-contact-card', [NewContactDataController::class, "topContactCard"]);
     Route::get('datahub/b2c/contact/top-five-area-community',[NewContactDataController::class,'topFiveAreaCommunity']);
 
-    /* Route::get("datahub/b2c/contact/pharmacy-data/all", [NewContactDataController::class, "allPharmacyData"]);
-    Route::get("datahub/b2c/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "pharmacyDataById"]);
-    Route::post("datahub/b2c/contact/pharmacy-data/add", [NewContactDataController::class, "addPharmacyData"]);
-    Route::put("datahub/b2c/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "updatePharmacyDataById"]);
-    Route::delete("datahub/b2c/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "deletePharmacyDataById"]);
-    Route::get('datahub/b2c/contact/supplier-data/all', [NewContactDataController::class, "allSupplierData"]);
-    Route::get('datahub/b2c/contact/supplier-data/id/{id}', [NewContactDataController::class, "supplierDataById"]);
-    Route::post('datahub/b2c/contact/supplier-data/add', [NewContactDataController::class, "addSupplierData"]);
-    Route::put('datahub/b2c/contact/supplier-data/id/{id}', [NewContactDataController::class, "updateSupplierDataById"]);
-    Route::delete('datahub/b2c/contact/supplier-data/id/{id}', [NewContactDataController::class, "deleteSupplierDataById"]);
-     */
     Route::get('datahub/b2c/contact/community-data/all', [NewContactDataController::class, "allCommunityData"]);
     Route::get('datahub/b2c/contact/community-data/id/{id}', [NewContactDataController::class, "communityDataById"]);
     Route::post('datahub/b2c/contact/community-data/add', [NewContactDataController::class, "addCommunityData"]);
@@ -36,12 +43,7 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/contact/subscriber-data/add', [NewContactDataController::class, "addSubscriberData"]);
     Route::put('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "updateSubscriberDataById"]);
     Route::delete('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "deleteSubscriberDataById"]);
-    /* Route::get('datahub/b2c/contact/pharmacy-database/parent/{parentId}', [NewContactDataController::class, "pharmacyDatabaseByParentId"]);
-    Route::post('datahub/b2c/contact/pharmacy-database/add', [NewContactDataController::class, "addPharmacyDatabase"]);
-    Route::get('datahub/b2c/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "pharmacyDatabaseByParentIdAndId"]);
-    Route::put('datahub/b2c/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "updatePharmacyDatabaseByParentIdAndId"]);
-    Route::delete('datahub/b2c/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "deletePharmacyDatabaseByParentIdAndId"]);
-    Route::post('datahub/b2c/contact/minio-upload', [NewContactDataController::class, "minioUpload"]);
+    /* Route::post('datahub/b2c/contact/minio-upload', [NewContactDataController::class, "minioUpload"]);
      */
     Route::get('woocommerce/customers',[NewContactDataController::class,'woocommerceCustomers']);  
 

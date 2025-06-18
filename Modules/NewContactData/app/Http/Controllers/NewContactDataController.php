@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Modules\NewContactData\Models\Contacts;
 use Modules\NewContactData\Models\ContactTypes;
+use Modules\NewContactData\Models\B2BContacts;
+use Modules\NewContactData\Models\B2BContactTypes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
@@ -39,11 +41,11 @@ class NewContactDataController extends Controller
      */
     public function __construct()
     {
-        $this->contact_pharmacy = ContactTypes::where('contact_type_name', 'PHARMACY')->first();
-        $this->contact_supplier = ContactTypes::where('contact_type_name', 'SUPPLIER')->first();
+        $this->contact_pharmacy = B2BContactTypes::where('contact_type_name', 'PHARMACY')->first();
+        $this->contact_supplier = B2BContactTypes::where('contact_type_name', 'SUPPLIER')->first();
         $this->contact_community = ContactTypes::where('contact_type_name', 'COMMUNITY')->first();
         $this->contact_general_newsletter = ContactTypes::where('contact_type_name', 'GENERAL NEWSLETTER')->first();
-        $this->contact_pharmacy_db = ContactTypes::where('contact_type_name', 'PHARMACY DATABASE')->first();
+        $this->contact_pharmacy_db = B2BContactTypes::where('contact_type_name', 'PHARMACY DATABASE')->first();
         $this->contact_subscriber = ContactTypes::where('contact_type_name', 'SUBSCRIBER')->first();
     }
 
@@ -428,7 +430,7 @@ class NewContactDataController extends Controller
 
         // Create the contact
        // Contacts::create($request_data);
-       Contacts::insert($request_data);
+       B2BContacts::insert($request_data);
 
         return $this->successResponse(null,'Pharmacy data added successfully',200);
     }
@@ -528,7 +530,7 @@ class NewContactDataController extends Controller
 
         // Create the contact
        // Contacts::create($request_data);
-       Contacts::insert($request_data);
+       B2BContacts::insert($request_data);
 
         return $this->successResponse(null,'Supplier data added successfully',200);
      }
@@ -539,14 +541,14 @@ class NewContactDataController extends Controller
 
         public function updateSupplierDataById(Request $request, $id)
         {
-            $result = Contacts::find($id);
+            $result = B2BContacts::find($id);
             if(!$result){
                 return $this->errorResponse('Error',404, 'Supplier not found');
             }
             $request_data = json_decode($request->getContent(), true);
 
             // Update the contact
-           Contacts::where('id', $id)->update($request_data);
+           B2BContacts::where('id', $id)->update($request_data);
 
             return $this->successResponse(null,'Supplier data updated successfully',200);
         }
@@ -556,7 +558,7 @@ class NewContactDataController extends Controller
        */   
     public function supplierDataById($id)
     {
-        $result = Contacts::find($id);
+        $result = B2BContacts::find($id);
         if(!$result){
             return $this->errorResponse('Error',404, 'Supplier not found');
         }
@@ -568,7 +570,7 @@ class NewContactDataController extends Controller
      */
     public function deleteSupplierDataById($id)
     {
-        $result = Contacts::find($id);
+        $result = B2BContacts::find($id);
         if(!$result){
             return $this->errorResponse('Error',404, 'Supplier not found');
         }
@@ -832,7 +834,7 @@ class NewContactDataController extends Controller
 
         // Create the contact
        // Contacts::create($request_data);
-       Contacts::insert($request_data);
+       B2BContacts::insert($request_data);
 
         return $this->successResponse(null,'Pharmacy database data added successfully',200);
     }
@@ -843,7 +845,7 @@ class NewContactDataController extends Controller
 
     public function pharmacyDatabaseByParentId(Request $request,$parentId)
     {
-        $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+        $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
         ->where('contact_parent_id', $parentId)
         ->where('contacts.is_deleted', 'false')
         ->get();
@@ -865,7 +867,7 @@ class NewContactDataController extends Controller
 
         if($search){
             $search = trim($search);
-            $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
@@ -877,7 +879,7 @@ class NewContactDataController extends Controller
             ->take($length)
             ->skip($start)
             ->get();
-            $records_filtered = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            $records_filtered = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
@@ -887,14 +889,14 @@ class NewContactDataController extends Controller
             ->where('contacts.is_deleted', 'false')
             ->count();
         } else {
-            $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
             ->where('contacts.is_deleted', 'false')
             ->orderBy('contacts.'.$sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
-            $records_filtered = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            $records_filtered = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
             ->where('contacts.is_deleted', 'false')
             ->orderBy('contacts.'.$sort_column, $sort_direction)
@@ -918,7 +920,7 @@ class NewContactDataController extends Controller
 
     public function updatePharmacyDatabaseByParentIdAndId(Request $request, $parentId, $id)
     {
-        $result = Contacts::find($parentId)->pharmacyChilds()->where('id', $id)->get();
+        $result = B2BContacts::find($parentId)->pharmacyChilds()->where('id', $id)->get();
         if(!$result){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
@@ -927,7 +929,7 @@ class NewContactDataController extends Controller
         $request_data = json_decode($request->getContent(), true);
         try {
             // Update the contact childs
-            Contacts::find($parentId)->pharmacyChilds()
+            B2BContacts::find($parentId)->pharmacyChilds()
             ->where('id', $id)
             ->update($request_data);
             DB::commit();
@@ -945,7 +947,7 @@ class NewContactDataController extends Controller
 
     public function pharmacyDatabaseByParentIdAndId(Request $request, $parentId, $id)
     {
-        $parent = Contacts::find($parentId);
+        $parent = B2BContacts::find($parentId);
         if(!$parent){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
@@ -960,7 +962,7 @@ class NewContactDataController extends Controller
 
      public function deletePharmacyDatabaseByParentIdAndId($parentId, $id)
      {
-        $parent = Contacts::find($parentId);
+        $parent = B2BContacts::find($parentId);
         if(!$parent){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
@@ -968,7 +970,7 @@ class NewContactDataController extends Controller
         DB::beginTransaction();
         try {
             // Soft delete the contact
-            Contacts::find($id)->update(['is_deleted' => true]);
+            B2BContacts::find($id)->update(['is_deleted' => true]);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();

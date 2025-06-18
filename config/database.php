@@ -97,6 +97,21 @@ return [
             'sslmode' => 'prefer',
         ],
 
+        'pgsql_b2b' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_B2B_URL'),
+            'host' => env('DB_B2B_HOST', '127.0.0.1'),
+            'port' => env('DB_B2B_PORT', '5432'),
+            'database' => env('DB_B2B_DATABASE', 'laravel'),
+            'username' => env('DB_B2B_USERNAME', 'root'),
+            'password' => env('DB_B2B_PASSWORD', ''),
+            'charset' => env('DB_B2B_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),
