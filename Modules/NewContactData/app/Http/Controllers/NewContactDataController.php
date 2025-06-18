@@ -325,6 +325,164 @@ class NewContactDataController extends Controller
        return $this->successResponse($res,'Top contact card',200);
     }
 
+    // B2B top cards
+
+    /**
+     * Get top contact card for B2B.
+     */
+
+    public function topContactCardB2B(Request $request)
+    {
+        $res = [];
+        if($request->type == 'pharmacies'){
+            $prev_month = date('m',strtotime('-1 Month'));
+            $current_month = date('m');
+            $prev_month_count = B2BContactTypes::find($this->contact_pharmacy->id)->contacts()
+            ->whereMonth('created_date', $prev_month)
+            ->count();
+
+            $current_month_count = B2BContactTypes::find($this->contact_pharmacy->id)->contacts()
+            ->whereMonth('created_date', $current_month)
+            ->count();
+
+            $diff =  $current_month_count - $prev_month_count;  
+            array_push($res, [
+                'total' => $current_month_count,
+                'delta' => $diff > 0 ? '+'.$diff : $diff,
+            ]);
+        }
+        else if($request->type == 'suppliers'){
+            $prev_month = date('m',strtotime('-1 Month'));
+            $current_month = date('m');
+            $prev_month_count = B2BContactTypes::find($this->contact_supplier->id)->contacts()
+            ->whereMonth('created_date', $prev_month)
+            ->count();
+            $current_month_count = B2BContactTypes::find($this->contact_supplier->id)->contacts()
+            ->whereMonth('created_date', $current_month)
+            ->count();
+            $diff =  $current_month_count - $prev_month_count;
+
+            array_push($res, [
+                'total' => $current_month_count,
+                'delta' => $diff > 0 ? '+'.$diff : $diff,
+            ]);
+        }
+        else if($request->type == 'pharmacy-db'){
+            $prev_month = date('m',strtotime('-1 Month'));
+            $current_month = date('m');
+            $prev_month_count = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            ->whereMonth('created_date', $prev_month)
+            ->count();
+            $current_month_count = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            ->whereMonth('created_date', $current_month)
+            ->count();
+            $diff =  $current_month_count - $prev_month_count;
+            array_push($res, [
+                'total' => $current_month_count,
+                'delta' => $diff > 0 ? '+'.$diff : $diff,
+            ]);
+        }
+        else {
+            return $this->errorResponse('Invalid type',400);
+        }
+            
+       return $this->successResponse($res,'Top contact card',200);
+
+
+    }
+
+    /**
+     * Get contact growth for B2B.
+     */
+
+    public function contactGrowthB2B(Request $request)
+    {
+        $now = date('Y');
+        $months = [
+            1 => 'January',
+            2 => 'February',   
+            3 => 'March',
+            4 => 'April',
+            5 => 'May',
+            6 => 'June',
+            7 => 'July',
+            8 => 'August',
+            9 => 'September',
+            10 => 'October',
+            11 => 'November',
+            12 => 'December'
+        ];
+
+        //pharmacy
+        $pharmacy = [];
+        for($i = 1; $i <= 12; $i++){
+            $pharmacy[$i] = B2BContactTypes::find($this->contact_pharmacy->id)->contacts()
+            ->whereMonth('created_date', $i)
+            ->whereYear('created_date', $now)
+            ->count();
+        }
+        $pharmacy_result = [];
+        foreach($pharmacy as $key => $value){
+            $pharmacy_result[$months[$key]] = (int) $value;
+        }   
+        //supplier
+        $supplier = [];
+        for($i = 1; $i <= 12; $i++){
+            $supplier[$i] = B2BContactTypes::find($this->contact_supplier->id)->contacts()
+            ->whereMonth('created_date', $i)
+            ->whereYear('created_date', $now)
+            ->count();
+        }
+        $supplier_result = [];
+        foreach($supplier as $key => $value){
+            $supplier_result[$months[$key]] = (int) $value;
+        }
+
+        //pharmacy db
+        $pharmacy_db = [];
+        for($i = 1; $i <= 12; $i++){
+            $pharmacy_db[$i] = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            ->whereMonth('created_date', $i)
+            ->whereYear('created_date', $now)
+            ->count();
+        }   
+        $pharmacy_db_result = [];
+        foreach($pharmacy_db as $key => $value){
+            $pharmacy_db_result[$months[$key]] = (int) $value;
+        }
+
+        $res = [
+          'Pharmacies' => $pharmacy_result,
+          'Suppliers' => $supplier_result,
+          'Pharmacy Database' => $pharmacy_db_result
+        ];
+       return $this->successResponse($res,'Contact growth',200);
+    }
+
+    /**
+     * Get top five pharmacies by database.
+     */
+
+    public function topFivePharmaciesByDatabase(Request $request)
+    {
+        $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+        ->select('contacts.contact_name','contacts.total_purchase')
+        ->where('contacts.is_deleted', 'false')
+        ->orderBy('total_purchase', 'desc')
+        ->take(5)
+        ->get();
+        $res = [];
+        foreach( $results as $result ){
+            $res[] = [
+                'pharmacy_name' => $result->contact_name,
+                'total_purchase' => (int) $result->total_purchase
+            ];
+        }
+       return $this->successResponse($res,'Top five pharmacies by database',200);
+    }
+
+    // B2B top cards
+
     /**
      * Get all pharmacy data.
      *

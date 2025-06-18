@@ -24,6 +24,13 @@ class B2BContacts extends Model
      * The table associated with the model.
      */
     protected $table = 'b2b_contacts';
+
+     /** relation */
+
+    public function pharmacyChilds()
+    {
+        return $this->hasMany(B2BContacts::class, 'contact_parent_id', 'id');
+    }
     
 
     // protected static function newFactory(): B2BContactsFactory

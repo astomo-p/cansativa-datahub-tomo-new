@@ -19,11 +19,14 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2b/contact/supplier-data/add', [NewContactDataController::class, "addSupplierData"]);
     Route::put('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "updateSupplierDataById"]);
     Route::delete('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "deleteSupplierDataById"]);
+    Route::get('datahub/b2b/contact/top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
+    Route::get('datahub/b2b/contact/top-five-purchase-pharmacies', [NewContactDataController::class, "topFivePurchasePharmacies"]);
+    Route::get('datahub/b2b/contact/contact-growth', [NewContactDataController::class, "contactGrowthB2B"]);
+    Route::get('datahub/b2b/contact/top-contact-card', [NewContactDataController::class, "topContactCardB2B"]);
+    Route::get('datahub/b2b/contact/top-five-pharmacies-by-db', [NewContactDataController::class, "topFivePharmaciesByDatabase"]);
 });
 
 Route::prefix('v1')->name('api.')->group(function () {
-    //Route::get('datahub/b2c/contact/top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
-    //Route::get('datahub/b2c/contact/top-five-purchase-pharmacies', [NewContactDataController::class, "topFivePurchasePharmacies"]);
     Route::get('datahub/b2c/contact/contact-growth', [NewContactDataController::class, "contactGrowth"]);
     Route::get('datahub/b2c/contact/top-contact-card', [NewContactDataController::class, "topContactCard"]);
     Route::get('datahub/b2c/contact/top-five-area-community',[NewContactDataController::class,'topFiveAreaCommunity']);
