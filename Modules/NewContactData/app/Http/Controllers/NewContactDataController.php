@@ -465,19 +465,19 @@ class NewContactDataController extends Controller
 
     public function topFivePharmaciesByDatabase(Request $request)
     {
-        $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
-        ->select('contacts.contact_name','contacts.total_purchase')
-        ->where('contacts.is_deleted', 'false')
-        ->orderBy('total_purchase', 'desc')
-        ->take(5)
+        $parents = B2BContacts::where('contact_parent_id', null)
+        ->orWhere('contact_parent_id', 0)
+        ->where('is_deleted', 'false')
+        ->select('id','contact_name')
         ->get();
+
         $res = [];
-        foreach( $results as $result ){
-            $res[] = [
-                'pharmacy_name' => $result->contact_name,
-                'total_purchase' => (int) $result->total_purchase
-            ];
+
+        foreach($parents as $parent){
+          
         }
+
+       
        return $this->successResponse($res,'Top five pharmacies by database',200);
     }
 
