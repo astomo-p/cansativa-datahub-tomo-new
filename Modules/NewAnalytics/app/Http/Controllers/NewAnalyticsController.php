@@ -13,6 +13,8 @@ use Google\Analytics\Data\V1beta\Dimension;
 use Google\Analytics\Data\V1beta\Metric;
 use Modules\NewAnalytics\Models\UserComments;
 use Modules\NewAnalytics\Models\UserSavedPosts;
+use Modules\NewContactData\Models\Contacts;
+use Modules\NewContactData\Models\ContactTypes;
 
 class NewAnalyticsController extends Controller
 {
@@ -1240,6 +1242,62 @@ public function analyticsSelectDateNewUser(Request $request)
         
     return $this->successResponse(['signature' => $signature], 'Signature generated successfully', 200);
  }
+
+
+ /**
+  * Get contact community likes amount
+  */
+
+  public function communityLikesAmount(Request $request)
+  {
+
+      $community_id = ContactTypes::where('contact_type_name', 'COMMUNITY')->first()->id;
+
+      $community_data = ContactTypes::find($community_id)
+      ->contacts()
+      ->where('user_id', $request->user_id)
+      ->first();
+
+      if (!$community_data) {
+          return $this->errorResponse('Community contact not found', 404);
+      }
+
+        $likes_amount = UserSavedPosts::where('user_id', $request->user_id)
+        ->where('is_like', 1)
+        ->count();
+
+        $res = [
+            'likes_amount_max' => $likes_amount,
+            'likes_amount_min' => 0
+        ];
+
+      return $this->successResponse($res, 'Community contact retrieved successfully', 200);
+  }
+
+  /**
+   * Get contact community comments amount
+   */
+
+    public function communityCommentsAmount(Request $request)
+    {
+        $community_id = ContactTypes::where('contact_type_name', 'COMMUNITY')->first()->id; 
+        $community_data = ContactTypes::find($community_id)
+        ->contacts()
+        ->where('user_id', $request->user_id)
+        ->first();
+
+        if (!$community_data) {
+            return $this->errorResponse('Community contact not found', 404);
+        }
+
+        $comments_amount = UserComments::where('user_id', $request->user_id)->count();
+
+        $res = [
+            'comments_amount_max' => $comments_amount,
+            'comments_amount_min' => 0
+        ];  
+        return $this->successResponse($res, 'Community contact retrieved successfully', 200);
+    }
 
     /**
      * Display a listing of the resource.

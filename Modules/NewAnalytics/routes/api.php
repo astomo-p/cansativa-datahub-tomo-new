@@ -37,6 +37,8 @@ Route::middleware([ValidateSignature::class])->prefix('v1')->name('api.')->group
     Route::get('/analytics/analytics-twentyfour-hour-yesterday-new-user',[NewAnalyticsController::class,"analyticsTwentyFourHourYesterdayNewUser"]);
     Route::get('/analytics/analytics-select-date-visitor',[NewAnalyticsController::class,"analyticsSelectDateVisitor"]);
     Route::get('/analytics/analytics-select-date-new-user',[NewAnalyticsController::class,"analyticsSelectDateNewUser"]);
+    Route::get('/analytics/contact/community-likes-amount/{user_id}',[NewAnalyticsController::class,"communityLikesAmount"]);
+    Route::get('/analytics/contact/community-comments-amount/{user_id}',[NewAnalyticsController::class,"communityCommentsAmount"]);
     });
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
