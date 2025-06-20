@@ -353,11 +353,12 @@ class NewAnalyticsController extends Controller
      */
     public function analyticsTwentyFourHourVisitor()
     {
-        $year = date('Y');
+        $year = date('Y',strtotime('-1 Year'));
         $now = date('Y-m-d');
         $ranges = new DateRange(['start_date' => "$year-01-01", 'end_date' => $now]);
         $date_range = [$ranges];
         $dimensions = [
+            new Dimension(['name'=>'year']),
             new Dimension(['name'=>'month']),
             new Dimension(['name'=>'hour']),
             new Dimension(['name'=>'day'])
@@ -375,16 +376,21 @@ class NewAnalyticsController extends Controller
         $response = $this->analytics_client->runReport($request);
         $res = [];
         $twenty_four_hour = [];
+        $prev_year = date('m') == '01' ? date('Y',strtotime('-1 Year')) : date('Y');
+        $prev_month = date('d') == '01' ? date('m',strtotime('-1 Month')) : date('m');
+        $prev_day = date('h') == '01' ? date('d',strtotime('-1 Hour')) : date('d');
+        $years = date('y');
         $month = date('m');
         $day = date('d');
         foreach ($response->getRows() as $row) {
             $dimension_value = $row->getDimensionValues();
             $metrics_value = $row->getMetricValues();
-            if($dimension_value[0]->getValue() == $month && $dimension_value[1]->getValue() == $day){
+            if(($dimension_value[0]->getValue() == $prev_year && $dimension_value[1]->getValue() == $prev_month && $dimension_value[3]->getValue() == $prev_day) || ($dimension_value[0]->getValue() == $years && $dimension_value[1]->getValue() == $month && $dimension_value[3]->getValue() == $day)){
                 array_push($twenty_four_hour,[
-                "month"=>$dimension_value[0]->getValue(),
-                "hour"=>$dimension_value[1]->getValue(),
-                "day"=>$dimension_value[2]->getValue(),
+                "year"=>$dimension_value[0]->getValue(),
+                "month"=>$dimension_value[1]->getValue(),
+                "hour"=>$dimension_value[2]->getValue(),
+                "day"=>$dimension_value[3]->getValue(),
                 "active_users"=>$metrics_value[0]->getValue()
             ]);
             }
