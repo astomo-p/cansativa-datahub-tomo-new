@@ -328,15 +328,20 @@ class NewAnalyticsController extends Controller
 
            else { $active_users = 0;
             foreach($thirty_day as $data){
-                if($data['day'] == $day){
+                if($data['day'] == $day && $data['month'] == date('m')){
                    $active_users += (int) $data['active_users'];
+                   $day_code = $day < 10 ? '0'.$day : "$day";
+            array_push($res,[
+                "day"=>$month_name[$data['month']] . ' ' .$day_code,
+                "active_users"=>$active_users
+            ]);
                 }
             }
-            $day_code = $day < 10 ? '0'.$day : "$day";
+            /* $day_code = $day < 10 ? '0'.$day : "$day";
             array_push($res,[
                 "day"=>$day_code,
                 "active_users"=>$active_users
-            ]);
+            ]); */
             }
             
         }
@@ -1236,9 +1241,10 @@ public function analyticsSelectDateNewUser(Request $request)
  {
     $apiToken = 'dummy-auth';
 
-    $payload = $request->all();
+    $payload = [];
+    $expired = base64_encode(date("Y-m-d H:i:s",strtotime("+1 Day")));
 
-    $signature = hash_hmac('sha256', json_encode($payload, JSON_THROW_ON_ERROR), $apiToken);
+    $signature = $expired . "." . hash_hmac('sha256', json_encode($payload, JSON_THROW_ON_ERROR), $apiToken);
         
     return $this->successResponse(['signature' => $signature], 'Signature generated successfully', 200);
  }
