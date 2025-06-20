@@ -1018,7 +1018,7 @@ class NewAnalyticsController extends Controller
      */
     public function analyticsTwentyFourHourYesterdayVisitor()
     {
-        $year = date('Y');
+        $year = date('Y',strtotime('-1 Year'));
         $now = date('Y-m-d');
         $ranges = new DateRange(['start_date' => "$year-01-01", 'end_date' => $now]);
         $date_range = [$ranges];
@@ -1040,7 +1040,7 @@ class NewAnalyticsController extends Controller
         $response = $this->analytics_client->runReport($request);
         $res = [];
         $twenty_four_hour = [];
-        $month = date('m');
+        $month = date('d') == '01' ? date('m',strtotime('-1 Month')) : date('m');
         $day = date('d',strtotime("-1 Day"));
         foreach ($response->getRows() as $row) {
             $dimension_value = $row->getDimensionValues();
@@ -1076,7 +1076,7 @@ class NewAnalyticsController extends Controller
      */
     public function analyticsTwentyFourHourYesterdayNewUser()
     {
-        $year = date('Y');
+        $year = date('Y',strtotime('-1 Year'));
         $now = date('Y-m-d');
         $ranges = new DateRange(['start_date' => "$year-01-01", 'end_date' => $now]);
         $date_range = [$ranges];
@@ -1098,7 +1098,7 @@ class NewAnalyticsController extends Controller
         $response = $this->analytics_client->runReport($request);
         $res = [];
         $twenty_four_hour = [];
-        $month = date('m');
+        $month = date('d') == '01' ? date('m',strtotime('-1 Month')) : date('m');
         $day = date('d',strtotime("-1 Day"));
         foreach ($response->getRows() as $row) {
             $dimension_value = $row->getDimensionValues();
