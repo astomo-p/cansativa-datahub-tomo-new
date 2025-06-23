@@ -376,16 +376,19 @@ class NewAnalyticsController extends Controller
         $response = $this->analytics_client->runReport($request);
         $res = [];
         $twenty_four_hour = [];
-        $prev_year = date('m') == '01' ? date('Y',strtotime('-1 Year')) : date('Y');
+        /* $prev_year = date('m') == '01' ? date('Y',strtotime('-1 Year')) : date('Y');
         $prev_month = date('d') == '01' ? date('m',strtotime('-1 Month')) : date('m');
-        $prev_day = date('h') == '01' ? date('d',strtotime('-1 Hour')) : date('d');
+        $prev_day = date('h') == '01' ? date('d',strtotime('-1 Day')) : date('d');
         $years = date('y');
+         */
+        $prev_year = date('m') == '01' ? date('Y',strtotime('-1 Year')) : date('Y');
+        $prev_month = date('d') == '01' ? date('m',strtotime('-1 Month')) : date('m',strtotime('-1 Month'));
+        $years = date('Y');
         $month = date('m');
-        $day = date('d');
         foreach ($response->getRows() as $row) {
             $dimension_value = $row->getDimensionValues();
             $metrics_value = $row->getMetricValues();
-            if(($dimension_value[0]->getValue() == $prev_year && $dimension_value[1]->getValue() == $prev_month && $dimension_value[3]->getValue() == $prev_day) || ($dimension_value[0]->getValue() == $years && $dimension_value[1]->getValue() == $month && $dimension_value[3]->getValue() == $day)){
+            if(($dimension_value[0]->getValue() == $prev_year && $dimension_value[1]->getValue() == $prev_month) ||($dimension_value[0]->getValue() == $years && $dimension_value[1]->getValue() == $month)){
                 array_push($twenty_four_hour,[
                 "year"=>$dimension_value[0]->getValue(),
                 "month"=>$dimension_value[1]->getValue(),
@@ -395,20 +398,32 @@ class NewAnalyticsController extends Controller
             ]);
             }
         }
-        for($hour = 0; $hour < 24; $hour++){
-            $active_users = 0;
-            foreach($twenty_four_hour as $data){
-                if($data['hour'] == $hour){
-                   $active_users += (int) $data['active_users'];
+
+            $year_check = date('Y',strtotime('-24 Hour'));
+            $month_check = date('m',strtotime('-24 Hour'));
+            $day_check = date('d',strtotime('-24 Hour'));
+            $date_check = $day_check . " " . date('F',strtotime('-24 Hour')) . " " . $year_check;
+       
+        foreach($twenty_four_hour as $data){
+           
+                if($data['year'] == $year_check && $data['month'] == $month_check && $data['day'] == $day_check){
+                   array_push($res,[
+                    'date'=>$date_check,
+                    'hour' => $data['hour'],
+                    'users' => (int) $data['active_users']
+                ]);
+                }
+
+                else if($data['year'] == date('Y') && $data['month'] == date('M') && $data['day'] == date('d')){
+                   array_push($res,[
+                    'date'=> date('d F Y'),
+                    'hour' => $data['hour'],
+                    'users' => (int) $data['active_users']
+                ]);
                 }
             }
-            $hour_code = $hour < 10 ? '0'.$hour : "$hour";
-            array_push($res,[
-                "hour"=>$hour_code,
-                "active_users"=>$active_users
-            ]);
-            
-        }
+
+
        return $this->successResponse($res, 'Analytics twenty four hour visitor retrieved successfully',200);
     }
 

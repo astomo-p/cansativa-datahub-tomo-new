@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasColumn('contacts', 'user_id')) {
+
         Schema::table('contacts', function (Blueprint $table) {
             $table->bigInteger('user_id')->unsigned()->nullable();
         });
+
+        }
     }
 
     /**
