@@ -4,6 +4,11 @@ use Illuminate\Support\Facades\Route;
 use Modules\NewContactData\Http\Controllers\NewContactDataController;
 
 Route::prefix('v1')->name('api.')->group(function () {
+    Route::get('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
+    Route::get('datahub/b2b/export', [NewContactDataController::class, "exportDataB2B"]);
+});
+
+Route::prefix('v1')->name('api.')->group(function () {
     Route::get('datahub/b2b/contact/pharmacy-database/parent/{parentId}', [NewContactDataController::class, "pharmacyDatabaseByParentId"]);
     Route::post('datahub/b2b/contact/pharmacy-database/add', [NewContactDataController::class, "addPharmacyDatabase"]);
     Route::get('datahub/b2b/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "pharmacyDatabaseByParentIdAndId"]);

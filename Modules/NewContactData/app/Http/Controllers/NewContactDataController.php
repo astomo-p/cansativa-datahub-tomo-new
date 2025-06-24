@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Storage;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use GuzzleHttp\Client;
 use Automattic\WooCommerce\Client as WooClient;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class NewContactDataController extends Controller
 {
@@ -1386,6 +1388,55 @@ class NewContactDataController extends Controller
         ],'Success',200);
     }
     
+
+    /**
+     * xlsx export
+     */
+
+     public function exportData(Request $request)
+     {
+            $contact = $request->contact_type;
+            $contact_type = [
+                'community'=>$this->contact_community->id,
+                'subscriber'=>$this->contact_subscriber->id,
+                'general_newsletter'=>$this->contact_general_newsletter->id
+            ];
+
+           if(!array_key_exists($contact,$contact_type)){
+                return $this->errorResponse('invalid contact_type',400);
+           }
+
+            $data = ContactTypes::find($contact_type[$contact])
+            ->contacts()
+            ->where('is_deleted',false)
+            ->get();
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setCellValue('A1', 'Pharmacy Name');
+            $sheet->setCellValue('B1', 'Pharmacy Number');
+            $sheet->setCellValue('C1', 'Postcode');
+            $sheet->setCellValue('D1', 'Country');
+            $sheet->setCellValue('E1', 'State'); 
+            $rows = 2;
+            foreach($data as $row){
+            $sheet->setCellValue('A' . $rows, $row['contact_name']);
+            $sheet->setCellValue('B' . $rows, $row['contact_no']);
+            $sheet->setCellValue('C' . $rows, $row['postcode']);
+            $sheet->setCellValue('D' . $rows, $row['country']);
+            $sheet->setCellValue('E' . $rows, $row['state']);
+            $rows++;
+            }
+            $filename = date('YmdHis') . "-" . $contact . ".xlsx";
+            $writer = new Xlsx($spreadsheet); 
+            $writer->save($filename);
+
+           return $this->successResponse([
+                "filename"=>url('public/' . $filename)
+            ],'successfully exported file',200);
+
+           
+     }
     
     
     /**
