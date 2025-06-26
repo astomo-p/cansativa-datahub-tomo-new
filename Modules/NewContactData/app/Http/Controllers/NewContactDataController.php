@@ -515,15 +515,32 @@ class NewContactDataController extends Controller
     public function allPharmacyData(Request $request)
     {
         // default pagination setup
-        $sort_column = explode('-',$request->get('sort', 'asc'))[0] ?? 'contacts.id';
-        $sort_direction = explode('-',$request->get('sort', 'asc'))[1] ?? 'asc';
+        $sort_column = $request->get('sort') == '' ? 'contacts.id' :  'contacts.' . explode('-',$request->get('sort'))[0];
+        $sort_direction = $request->get('sort') == '' ? 'asc' :  explode('-',$request->get('sort'))[1];;
         $start = $request->get('start', 0);
         $length = $request->get('length', 10);
         $search = $request->get('search');
 
+        // query strings
+        $query_strings = $request->all();
+        $querys = ['postcode','city','country','last_purchase','amount_purchase','total_purchase','average_purchase','created_at_start_date','created_at_end_date'];
+        $query_where = [];
+        foreach($query_strings as $string => $value){
+            if (in_array($string,$querys)){
+                if($string == 'created_at_start_date'){
+                    array_push($query_where,['created_date','>=',$value]);
+                } else if($string == 'created_at_end_date'){    
+                    array_push($query_where,['created_date','<=',$value]);
+                } else {
+                    array_push($query_where,[$string,'=',$value]);
+                }
+            }
+        }
+
          //basic response metrics
         $records_total = ContactTypes::find($this->contact_pharmacy->id)->contacts()
         ->where('contacts.is_deleted', 'false')
+        ->where($query_where)
         ->count();
         $records_filtered = $records_total;
 
@@ -536,7 +553,8 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->where($query_where)
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
@@ -547,11 +565,13 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
+            ->where($query_where)
             ->count();
         } else {
             $results = ContactTypes::find($this->contact_pharmacy->id)->contacts()
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->where($query_where)
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
@@ -650,8 +670,8 @@ class NewContactDataController extends Controller
     public function allSupplierData(Request $request)
     {
         // default pagination setup
-        $sort_column = explode('-',$request->get('sort', 'asc'))[0] ?? 'contacts.id';
-        $sort_direction = explode('-',$request->get('sort', 'asc'))[1] ?? 'asc';
+        $sort_column = $request->get('sort') == '' ? 'contacts.id' :  'contacts.' . explode('-',$request->get('sort'))[0];
+        $sort_direction = $request->get('sort') == '' ? 'asc' :  explode('-',$request->get('sort'))[1];;
         $start = $request->get('start', 0);
         $length = $request->get('length', 10);
         $search = $request->get('search');
@@ -671,7 +691,7 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
@@ -686,7 +706,7 @@ class NewContactDataController extends Controller
         } else {
             $results = ContactTypes::find($this->contact_supplier->id)->contacts()
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
@@ -771,11 +791,27 @@ class NewContactDataController extends Controller
     public function allCommunityData(Request $request)
     {
         // default pagination setup
-        $sort_column = explode('-',$request->get('sort', 'asc'))[0] ?? 'contacts.id';
-        $sort_direction = explode('-',$request->get('sort', 'asc'))[1] ?? 'asc';
+        $sort_column = $request->get('sort') == '' ? 'contacts.id' :  'contacts.' . explode('-',$request->get('sort'))[0];
+        $sort_direction = $request->get('sort') == '' ? 'asc' :  explode('-',$request->get('sort'))[1];;
         $start = $request->get('start', 0);
         $length = $request->get('length', 10);
         $search = $request->get('search');
+
+        // query strings
+        $query_strings = $request->all();
+        $querys = ['amount_like','amount_comment'];
+        $query_where = [];
+        foreach($query_strings as $string => $value){
+            if (in_array($string,$querys)){
+                if($string == 'amount_like'){ 
+                    $query_where['amount_like'] = ['amount_like', '<=', $value];
+                } else if($string == 'amount_comment'){    
+                    $query_where['amount_comment'] = ['amount_comment','<=',$value];
+                } else {
+                    array_push($query_where,[$string,'=',$value]);
+                }
+            }
+        }
 
         //basic response metrics
         $records_total = ContactTypes::find($this->contact_community->id)->contacts()
@@ -785,33 +821,37 @@ class NewContactDataController extends Controller
 
         if($search){
             $search = trim($search);
-            $results = ContactTypes::find($this->contact_community->id)->contacts()
+            $results = ContactTypes::find($this->contact_community->id)->savedPosts()
+            ->selectRaw('COUNT(is_like) AS amount_like')
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
-            ->take($length)
-            ->skip($start)
-            ->get();
-            $records_filtered = ContactTypes::find($this->contact_community->id)->contacts()
-            ->where(function($query) use ($search) {
-                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
-            })
+            ->where('user_saved_posts.is_like',1)
+            ->orderBy($sort_column, $sort_direction);
+
+            $records_filtered = $results
+            ->having($query_where['amount_like'])
             ->count();
-        } else {
-            $results = ContactTypes::find($this->contact_community->id)->contacts()
-            ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            $results = $results
             ->take($length)
             ->skip($start)
+            ->having($query_where['amount_like'])
+            ->get();
+           
+        } else {
+            $results = ContactTypes::find($this->contact_community->id)->savedPosts()
+            ->selectRaw('COUNT(is_like) AS amount_like')
+            ->where('contacts.is_deleted', 'false') 
+            ->where('user_saved_posts.is_like',1)
+            ->orderBy($sort_column, $sort_direction) 
+            ->take($length)
+            ->skip($start)
+            ->having($query_where['amount_like'])
             ->get();
         }
-
         
         $res = [
             'recordsTotal' => $records_total,
@@ -906,16 +946,38 @@ class NewContactDataController extends Controller
      public function allGeneralNewsletterData(Request $request)
      {
         // default pagination setup
-        $sort_column = explode('-',$request->get('sort', 'asc'))[0] ?? 'contacts.id';
-        $sort_direction = explode('-',$request->get('sort', 'asc'))[1] ?? 'asc';
+        $sort_column = $request->get('sort') == '' ? 'contacts.id' :  'contacts.' . explode('-',$request->get('sort'))[0];
+        $sort_direction = $request->get('sort') == '' ? 'asc' :  explode('-',$request->get('sort'))[1];;
         $start = $request->get('start', 0);
         $length = $request->get('length', 10);
         $search = $request->get('search');
 
+        // query strings
+        $query_strings = $request->all();
+        $querys = ['created_at_start_date','created_at_end_date'];
+        $query_where = [];
+        foreach($query_strings as $string => $value){
+            if (in_array($string,$querys)){
+                if($string == 'created_at_start_date'){
+                    array_push($query_where,['created_date','>=',$value]);
+                } else if($string == 'created_at_end_date'){    
+                    array_push($query_where,['created_date','<=',$value]);
+                } else {
+                    array_push($query_where,[$string,'=',$value]);
+                }
+            }
+        }
+
         //basic response metrics
         $records_total = ContactTypes::find($this->contact_general_newsletter->id)->contacts()
-        ->where('contacts.is_deleted', 'false')
-        ->count();
+        ->where('contacts.is_deleted', 'false');
+
+        
+            $records_total->where($query_where);
+        
+
+
+        $records_total = $records_total->count();
         $records_filtered = $records_total;
 
         if($search){
@@ -926,8 +988,14 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
-            ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->where('contacts.is_deleted', 'false');
+
+                
+            $results->where($query_where);    
+
+
+            $results = $results
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
@@ -937,15 +1005,28 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
-            ->where('contacts.is_deleted', 'false')
-            ->count();
+            ->where('contacts.is_deleted', 'false');
+
+               
+                $records_filtered->where($query_where);
+
+
+                $records_filtered = $records_filtered->count(); 
         } else {
             $results = ContactTypes::find($this->contact_general_newsletter->id)->contacts()
-            ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->where('contacts.is_deleted', 'false');
+
+                
+            $results->where($query_where);
+
+
+            $results = $results
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
+
+           
         }
 
         
@@ -1037,8 +1118,8 @@ class NewContactDataController extends Controller
         }
 
         //default pagination setup
-        $sort_column = explode('-',$request->get('sort', 'asc'))[0] ?? 'contacts.id';
-        $sort_direction = explode('-',$request->get('sort', 'asc'))[1] ?? 'asc';
+        $sort_column = explode('-',$request->get('sort'))[0] ?? 'contacts.id';
+        $sort_direction = explode('-',$request->get('sort'))[1] ?? 'asc';
         $start = $request->get('start', 0);
         $length = $request->get('length', 10);
         $search = $request->get('search');
@@ -1057,7 +1138,7 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
@@ -1074,14 +1155,14 @@ class NewContactDataController extends Controller
             $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
             $records_filtered = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->count();
@@ -1186,8 +1267,8 @@ class NewContactDataController extends Controller
          public function allSubscriberData(Request $request)
          {
             // default pagination setup
-            $sort_column = explode('-',$request->get('sort', 'asc'))[0] ?? 'contacts.id';
-            $sort_direction = explode('-',$request->get('sort', 'asc'))[1] ?? 'asc';
+            $sort_column = $request->get('sort') == '' ? 'contacts.id' :  'contacts.' . explode('-',$request->get('sort'))[0];
+            $sort_direction = $request->get('sort') == '' ? 'asc' :  explode('-',$request->get('sort'))[1];;
             $start = $request->get('start', 0);
             $length = $request->get('length', 10);
             $search = $request->get('search');
@@ -1207,7 +1288,7 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
@@ -1222,7 +1303,7 @@ class NewContactDataController extends Controller
         } else {
             $results = ContactTypes::find($this->contact_subscriber->id)->contacts()
             ->where('contacts.is_deleted', 'false')
-            ->orderBy('contacts.'.$sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction)
             ->take($length)
             ->skip($start)
             ->get();
@@ -1406,27 +1487,151 @@ class NewContactDataController extends Controller
                 return $this->errorResponse('invalid contact_type',400);
            }
 
-            $data = ContactTypes::find($contact_type[$contact])
-            ->contacts()
-            ->where('is_deleted',false)
-            ->get();
+           $count = ContactTypes::find($contact_type[$contact])
+           ->contacts()
+           ->where('is_deleted',false)
+           ->count();
 
-            $spreadsheet = new Spreadsheet();
-            $sheet = $spreadsheet->getActiveSheet();
-            $sheet->setCellValue('A1', 'Pharmacy Name');
-            $sheet->setCellValue('B1', 'Pharmacy Number');
-            $sheet->setCellValue('C1', 'Postcode');
-            $sheet->setCellValue('D1', 'Country');
-            $sheet->setCellValue('E1', 'State'); 
-            $rows = 2;
-            foreach($data as $row){
-            $sheet->setCellValue('A' . $rows, $row['contact_name']);
-            $sheet->setCellValue('B' . $rows, $row['contact_no']);
-            $sheet->setCellValue('C' . $rows, $row['postcode']);
-            $sheet->setCellValue('D' . $rows, $row['country']);
-            $sheet->setCellValue('E' . $rows, $row['state']);
-            $rows++;
-            }
+           $limit = 25;
+
+           $chunk_size = ceil($count / $limit);
+
+           $chunk = 0;
+
+           $spreadsheet = new Spreadsheet();
+
+           while($chunk < $chunk_size){
+                $data = ContactTypes::find($contact_type[$contact])
+                        ->contacts()
+                        ->where('is_deleted',false)
+                        ->skip($chunk * $limit)
+                        ->take($limit)
+                        ->get();
+
+                $sheet = $chunk == 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
+                $sheet->setCellValue('A1', 'Pharmacy Name');
+                $sheet->setCellValue('B1', 'Pharmacy Number');
+                $sheet->setCellValue('C1', 'Address');
+                $sheet->setCellValue('D1', 'Postcode');
+                $sheet->setCellValue('E1', 'Country');
+                $sheet->setCellValue('F1', 'State');
+                $sheet->setCellValue('G1', 'Contact Person');
+                $sheet->setCellValue('H1', 'Email'); 
+                $sheet->setCellValue('I1', 'Phone Number');
+                $sheet->setCellValue('J1', 'Amount of Purchase');
+                $sheet->setCellValue('K1', 'Average of Purchase');
+                $sheet->setCellValue('L1', 'Total Purchase');
+                $sheet->setCellValue('M1', 'Last Purchase Date');
+                $sheet->setCellValue('N1', 'Created At');
+                $rows = 2;
+                foreach($data as $row){
+                $sheet->setCellValue('A' . $rows, $row['contact_name']);
+                $sheet->setCellValue('B' . $rows, $row['contact_no']);
+                $sheet->setCellValue('C' . $rows, $row['address']);
+                $sheet->setCellValue('D' . $rows, $row['postcode']);
+                $sheet->setCellValue('E' . $rows, $row['country']);
+                $sheet->setCellValue('F' . $rows, $row['state']);
+                $sheet->setCellValue('G' . $rows, $row['contact_person']);
+                $sheet->setCellValue('H' . $rows, $row['email']);
+                $sheet->setCellValue('I' . $rows, $row['phone_no']);
+                $sheet->setCellValue('J' . $rows, $row['amount_purchase']);
+                $sheet->setCellValue('K' . $rows, $row['average_purchase']);
+                $sheet->setCellValue('L' . $rows, $row['total_purchase']);
+                $sheet->setCellValue('M' . $rows, date('d F Y',strtotime($row['last_purchase_date'])));
+                $sheet->setCellValue('N' . $rows, date('d F Y',strtotime($row['created_date'])));
+                $rows++;
+                }
+
+                $chunk++;
+
+           }
+
+        
+            $filename = date('YmdHis') . "-" . $contact . ".xlsx";
+            $writer = new Xlsx($spreadsheet); 
+            $writer->save($filename);
+
+           return $this->successResponse([
+                "filename"=>url('public/' . $filename)
+            ],'successfully exported file',200);
+
+           
+     }
+
+     public function exportDataB2B(Request $request)
+     {
+            $contact = $request->contact_type;
+            $contact_type = [
+                'pharmacy'=>$this->contact_pharmacy->id,
+                'supplier'=>$this->contact_supplier->id,
+                'pharmacy-db'=>$this->contact_pharmacy_db->id
+            ];
+
+           if(!array_key_exists($contact,$contact_type)){
+                return $this->errorResponse('invalid contact_type',400);
+           }
+
+           $count = B2BContactTypes::find($contact_type[$contact])
+           ->contacts()
+           ->where('is_deleted',false)
+           ->count();
+
+           $limit = 25;
+
+           $chunk_size = ceil($count / $limit);
+
+           $chunk = 0;
+
+           $spreadsheet = new Spreadsheet();
+
+           while($chunk < $chunk_size){
+                $data = B2BContactTypes::find($contact_type[$contact])
+                        ->contacts()
+                        ->where('is_deleted',false)
+                        ->skip($chunk * $limit)
+                        ->take($limit)
+                        ->get();
+
+                $sheet = $chunk == 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
+                $sheet->setCellValue('A1', 'Pharmacy Name');
+                $sheet->setCellValue('B1', 'Pharmacy Number');
+                $sheet->setCellValue('C1', 'Address');
+                $sheet->setCellValue('D1', 'Postcode');
+                $sheet->setCellValue('E1', 'Country');
+                $sheet->setCellValue('F1', 'State');
+                $sheet->setCellValue('G1', 'Contact Person');
+                $sheet->setCellValue('H1', 'Email'); 
+                $sheet->setCellValue('I1', 'Phone Number');
+                $sheet->setCellValue('J1', 'Amount of Purchase');
+                $sheet->setCellValue('K1', 'Average of Purchase');
+                $sheet->setCellValue('L1', 'Total Purchase');
+                $sheet->setCellValue('M1', 'Last Purchase Date');
+                $sheet->setCellValue('N1', 'Created At');
+                $rows = 2;
+                foreach($data as $row){
+                $sheet->setCellValue('A' . $rows, $row['contact_name']);
+                $sheet->setCellValue('B' . $rows, $row['contact_no']);
+                $sheet->setCellValue('C' . $rows, $row['address']);
+                $sheet->setCellValue('D' . $rows, $row['postcode']);
+                $sheet->setCellValue('E' . $rows, $row['country']);
+                $sheet->setCellValue('F' . $rows, $row['state']);
+                $sheet->setCellValue('G' . $rows, $row['contact_person']);
+                $sheet->setCellValue('H' . $rows, $row['email']);
+                $sheet->setCellValue('I' . $rows, $row['phone_no']);
+                $sheet->setCellValue('J' . $rows, $row['amount_purchase']);
+                $sheet->setCellValue('K' . $rows, $row['average_purchase']);
+                $sheet->setCellValue('L' . $rows, $row['total_purchase']);
+                $sheet->setCellValue('M' . $rows, date('d F Y',strtotime($row['last_purchase_date'])));
+                $sheet->setCellValue('N' . $rows, date('d F Y',strtotime($row['created_date'])));
+                
+                $rows++;
+                }
+
+                $chunk++;
+
+           }
+
+        
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
             $writer = new Xlsx($spreadsheet); 
             $writer->save($filename);

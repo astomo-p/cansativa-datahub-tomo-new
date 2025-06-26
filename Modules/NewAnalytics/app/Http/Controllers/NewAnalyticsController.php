@@ -34,7 +34,7 @@ class NewAnalyticsController extends Controller
     {
         $dir = dirname(__FILE__,6);
         $this->analytics_client = new BetaAnalyticsDataClient([
-               'credentials' => $dir . env('ANALYTICS_CREDENTIAL_PATH')
+               'credentials' => env('ANALYTICS_CREDENTIAL_PATH')
             ]); 
     }
 
