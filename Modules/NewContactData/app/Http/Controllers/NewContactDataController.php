@@ -803,13 +803,7 @@ class NewContactDataController extends Controller
         $query_where = [];
         foreach($query_strings as $string => $value){
             if (in_array($string,$querys)){
-                if($string == 'amount_like'){ 
-                    $query_where['amount_like'] = ['amount_like', '<=', $value];
-                } else if($string == 'amount_comment'){    
-                    $query_where['amount_comment'] = ['amount_comment','<=',$value];
-                } else {
-                    array_push($query_where,[$string,'=',$value]);
-                }
+                    array_push($query_where,[$string,'=',$value]); 
             }
         }
 
@@ -822,34 +816,43 @@ class NewContactDataController extends Controller
         if($search){
             $search = trim($search);
             $results = ContactTypes::find($this->contact_community->id)->savedPosts()
-            ->selectRaw('COUNT(is_like) AS amount_like')
+            ->when($request->get('amount_like'),function($query,$row){
+                $query->selectRaw('COUNT(user_saved_posts.is_like) AS amount_like')
+                ->where('user_saved_posts.is_like',1)
+                ->groupBy('contacts.contact_type_id','contacts.country')
+                ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row]);
+            })
+             
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->where('user_saved_posts.is_like',1)
             ->orderBy($sort_column, $sort_direction);
 
             $records_filtered = $results
-            ->having($query_where['amount_like'])
             ->count();
             $results = $results
             ->take($length)
             ->skip($start)
-            ->having($query_where['amount_like'])
             ->get();
            
         } else {
             $results = ContactTypes::find($this->contact_community->id)->savedPosts()
-            ->selectRaw('COUNT(is_like) AS amount_like')
+            ->when($request->get('amount_like'),function($query,$row){
+                $query->selectRaw('COUNT(user_saved_posts.is_like) AS amount_like')
+                ->where('user_saved_posts.is_like',1)
+                ->groupBy('contacts.contact_type_id','contacts.country')
+                ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row]);
+            })
             ->where('contacts.is_deleted', 'false') 
-            ->where('user_saved_posts.is_like',1)
             ->orderBy($sort_column, $sort_direction) 
             ->take($length)
-            ->skip($start)
-            ->having($query_where['amount_like'])
+            ->skip($start);
+            $records_filtered = $results
+            ->count();
+            $results = $results
             ->get();
         }
         
