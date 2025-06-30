@@ -13,6 +13,7 @@ use Modules\NewContactData\Models\B2BContactTypes;
 use Modules\NewAnalytics\Models\UserSavedPosts;
 use Modules\NewAnalytics\Models\VisitorLikes;
 use Modules\NewAnalytics\Models\UserComments;
+use Modules\Users\Models\Users;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
@@ -557,24 +558,21 @@ class NewContactDataController extends Controller
             })
             ->where('contacts.is_deleted', 'false')
             ->where($query_where)
-            ->orderBy($sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+            $results = $results 
             ->take($length)
             ->skip($start)
             ->get();
-            $records_filtered = ContactTypes::find($this->contact_pharmacy->id)->contacts()
-            ->where(function($query) use ($search) {
-                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
-            })
-            ->where('contacts.is_deleted', 'false')
-            ->where($query_where)
-            ->count();
         } else {
             $results = ContactTypes::find($this->contact_pharmacy->id)->contacts()
             ->where('contacts.is_deleted', 'false')
             ->where($query_where)
-            ->orderBy($sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+            $results = $results 
             ->take($length)
             ->skip($start)
             ->get();
@@ -694,22 +692,20 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+            $results = $results 
             ->take($length)
             ->skip($start)
             ->get();
-
-            $records_filtered = ContactTypes::find($this->contact_supplier->id)->contacts()
-            ->where(function($query) use ($search) {
-                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
-            })
-            ->count();
         } else {
             $results = ContactTypes::find($this->contact_supplier->id)->contacts()
             ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+            $results = $results 
             ->take($length)
             ->skip($start)
             ->get();
@@ -802,13 +798,6 @@ class NewContactDataController extends Controller
 
         // query strings
         $query_strings = $request->all();
-        $querys = ['amount_like','amount_comment'];
-        $query_where = [];
-        foreach($query_strings as $string => $value){
-            if (in_array($string,$querys)){
-                    array_push($query_where,[$string,'=',$value]); 
-            }
-        }
 
         //basic response metrics
         $records_total = ContactTypes::find($this->contact_community->id)->contacts()
@@ -818,14 +807,29 @@ class NewContactDataController extends Controller
 
         if($search){
             $search = trim($search);
-            $results = ContactTypes::find($this->contact_community->id)->savedPosts()
-            ->when($request->get('amount_like'),function($query,$row){
-                $query->selectRaw('COUNT(user_saved_posts.is_like) AS amount_like')
-                ->where('user_saved_posts.is_like',1)
-                ->groupBy('contacts.contact_type_id','contacts.country')
-                ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row]);
+            $results = ContactTypes::find($this->contact_community->id)->contacts()
+            ->when($request->get('amount_likes'),function($query,$row){
+                $query->addSelect([
+                            'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
+                                                ->where('user_saved_posts.is_like',1)
+                                                ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
+                ]);
             })
-             
+            ->when($request->get('amount_comments'),function($query,$row){
+                $query->addSelect([
+                            'amount_comments'=>UserComments::selectRaw('COUNT(user_comments.id) AS total_comments')
+                                                ->havingRaw('COUNT(user_comments.id) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','user_comments.user_id')
+                ]);
+            })
+            ->when($request->get('amount_submissions'),function($query,$row){
+                $query->addSelect([
+                            'amount_submissions'=>VisitorLikes::selectRaw('COUNT(posts.id) AS total_submissions')
+                                                ->havingRaw('COUNT(posts.id) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','posts.published_by')
+                ]);
+            })
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
@@ -842,20 +846,41 @@ class NewContactDataController extends Controller
             ->get();
            
         } else {
-            $results = ContactTypes::find($this->contact_community->id)->savedPosts()
-            ->when($request->get('amount_like'),function($query,$row){
-                $query->selectRaw('COUNT(user_saved_posts.is_like) AS amount_like')
-                ->where('user_saved_posts.is_like',1)
-                ->groupBy('contacts.contact_type_id','contacts.country')
-                ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row]);
+            $results = ContactTypes::find($this->contact_community->id)->contacts()
+            ->when($request->get('amount_likes'),function($query,$row){
+                $query->addSelect([
+                            'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
+                                                ->where('user_saved_posts.is_like',1)
+                                                ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
+                ]);
+            })
+            ->when($request->get('amount_comments'),function($query,$row){
+                $query->addSelect([
+                            'amount_comments'=>UserComments::selectRaw('COUNT(user_comments.id) AS total_comments')
+                                                ->havingRaw('COUNT(user_comments.id) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','user_comments.user_id')
+                ]);
+            })
+            ->when($request->get('amount_submissions'),function($query,$row){
+                $query->addSelect([
+                            'amount_submissions'=>VisitorLikes::selectRaw('COUNT(posts.id) AS total_submissions')
+                                                ->havingRaw('COUNT(posts.id) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','posts.published_by')
+                ]);
+            })
+            ->where(function($query) use ($search) {
+                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false') 
-            ->orderBy($sort_column, $sort_direction) 
-            ->take($length)
-            ->skip($start);
+            ->orderBy($sort_column, $sort_direction);
             $records_filtered = $results
             ->count();
-            $results = $results
+            $results = $results 
+            ->take($length)
+            ->skip($start)
             ->get();
         }
         
@@ -994,40 +1019,23 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
-            ->where('contacts.is_deleted', 'false');
-
-                
-            $results->where($query_where);    
-
-
-            $results = $results
-            ->orderBy($sort_column, $sort_direction)
+            ->where('contacts.is_deleted', 'false')
+            ->where($query_where)
+            ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+            $results = $results 
             ->take($length)
             ->skip($start)
-            ->get();
-            $records_filtered = ContactTypes::find($this->contact_general_newsletter->id)->contacts()
-            ->where(function($query) use ($search) {
-                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
-            })
-            ->where('contacts.is_deleted', 'false');
-
-               
-                $records_filtered->where($query_where);
-
-
-                $records_filtered = $records_filtered->count(); 
+            ->get(); 
         } else {
             $results = ContactTypes::find($this->contact_general_newsletter->id)->contacts()
-            ->where('contacts.is_deleted', 'false');
-
-                
-            $results->where($query_where);
-
-
-            $results = $results
-            ->orderBy($sort_column, $sort_direction)
+            ->where('contacts.is_deleted', 'false')
+            ->where($query_where)
+            ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+            $results = $results 
             ->take($length)
             ->skip($start)
             ->get();
@@ -1144,34 +1152,24 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+            $results = $results 
             ->take($length)
             ->skip($start)
             ->get();
-            $records_filtered = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
-            ->where('contact_parent_id', $parentId)
-            ->where(function($query) use ($search) {
-                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
-            })
-            ->where('contacts.is_deleted', 'false')
-            ->count();
         } else {
             $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
             ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+            $results = $results 
             ->take($length)
             ->skip($start)
             ->get();
-            $records_filtered = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
-            ->where('contact_parent_id', $parentId)
-            ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction)
-            ->take($length)
-            ->skip($start)
-            ->count();
         }
 
         $res = [
@@ -1288,28 +1286,71 @@ class NewContactDataController extends Controller
             if($search){
             $search = trim($search);
             $results = ContactTypes::find($this->contact_subscriber->id)->contacts()
+            ->when($request->get('amount_likes'),function($query,$row){
+                $query->addSelect([
+                            'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
+                                                ->where('user_saved_posts.is_like',1)
+                                                ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
+                ]);
+            })
+            ->when($request->get('amount_comments'),function($query,$row){
+                $query->addSelect([
+                            'amount_comments'=>UserComments::selectRaw('COUNT(user_comments.id) AS total_comments')
+                                                ->havingRaw('COUNT(user_comments.id) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','user_comments.user_id')
+                ]);
+            })
+            ->when($request->get('amount_submissions'),function($query,$row){
+                $query->addSelect([
+                            'amount_submissions'=>VisitorLikes::selectRaw('COUNT(posts.id) AS total_submissions')
+                                                ->havingRaw('COUNT(posts.id) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','posts.published_by')
+                ]);
+            })
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction);
+
+            $records_filtered = $results
+            ->count();
+            $results = $results
             ->take($length)
             ->skip($start)
             ->get();
-            $records_filtered = ContactTypes::find($this->contact_subscriber->id)->contacts()
-            ->where(function($query) use ($search) {
-                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
-            })
-            ->where('contacts.is_deleted', 'false')
-            ->count();
         } else {
             $results = ContactTypes::find($this->contact_subscriber->id)->contacts()
+            ->when($request->get('amount_likes'),function($query,$row){
+                $query->addSelect([
+                            'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
+                                                ->where('user_saved_posts.is_like',1)
+                                                ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
+                ]);
+            })
+            ->when($request->get('amount_comments'),function($query,$row){
+                $query->addSelect([
+                            'amount_comments'=>UserComments::selectRaw('COUNT(user_comments.id) AS total_comments')
+                                                ->havingRaw('COUNT(user_comments.id) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','user_comments.user_id')
+                ]);
+            })
+            ->when($request->get('amount_submissions'),function($query,$row){
+                $query->addSelect([
+                            'amount_submissions'=>VisitorLikes::selectRaw('COUNT(posts.id) AS total_submissions')
+                                                ->havingRaw('COUNT(posts.id) <= ?',[$row])
+                                                ->whereColumn('contacts.user_id','=','posts.published_by')
+                ]);
+            })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction)
+            ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+            $results = $results
             ->take($length)
             ->skip($start)
             ->get();
@@ -1500,9 +1541,7 @@ class NewContactDataController extends Controller
 
            $limit = 25;
 
-          // $chunk_size = ceil($count / $limit);
-
-          $chunk_size = 0;
+           $chunk_size = ceil($count / $limit);
 
            $chunk = 0;
 
@@ -1518,7 +1557,9 @@ class NewContactDataController extends Controller
                             'total_submissions'=>VisitorLikes::selectRaw('COUNT(posts.published_by) AS total_submissions')
                                                 ->whereColumn('contacts.user_id','=','posts.published_by'),
                            'total_comments'=> UserComments::selectRaw('COUNT(user_comments.user_id) AS total_comments')
-                                                ->whereColumn('contacts.user_id','=','user_comments.user_id')
+                                                ->whereColumn('contacts.user_id','=','user_comments.user_id'),
+                            'account_creation'=>Users::selectRaw('created_date')
+                                                ->whereColumn('contacts.user_id','=','users.id'),
                         ])
                         ->where('contacts.is_deleted',false)
                         ->skip($chunk * $limit)
@@ -1565,11 +1606,11 @@ class NewContactDataController extends Controller
                 $sheet->setCellValue('C' . $rows, $row['phone_no']);
                 $sheet->setCellValue('D' . $rows, $row['whatsapp_subscription']);
                 $sheet->setCellValue('E' . $rows, $row['cansativa_newsletter']);
-                $sheet->setCellValue('D' . $rows, $row['total_likes']);
-                $sheet->setCellValue('E' . $rows, $row['total_comments']);
-                $sheet->setCellValue('E' . $rows, $row['total_submissions']);
-                $sheet->setCellValue('E' . $rows, date('d F Y',strtotime($row['account_creation'])));
-                $sheet->setCellValue('F' . $rows, date('d F Y',strtotime($row['created_date'])));
+                $sheet->setCellValue('F' . $rows, $row['total_likes']);
+                $sheet->setCellValue('G' . $rows, $row['total_comments']);
+                $sheet->setCellValue('H' . $rows, $row['total_submissions']);
+                $sheet->setCellValue('I' . $rows, date('d F Y',strtotime($row['account_creation'])));
+                $sheet->setCellValue('J' . $rows, date('d F Y',strtotime($row['created_date'])));
                 $rows++;
                 }
 
