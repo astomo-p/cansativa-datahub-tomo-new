@@ -10,6 +10,9 @@ use Modules\NewContactData\Models\Contacts;
 use Modules\NewContactData\Models\ContactTypes;
 use Modules\NewContactData\Models\B2BContacts;
 use Modules\NewContactData\Models\B2BContactTypes;
+use Modules\NewAnalytics\Models\UserSavedPosts;
+use Modules\NewAnalytics\Models\VisitorLikes;
+use Modules\NewAnalytics\Models\UserComments;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
@@ -1497,7 +1500,9 @@ class NewContactDataController extends Controller
 
            $limit = 25;
 
-           $chunk_size = ceil($count / $limit);
+          // $chunk_size = ceil($count / $limit);
+
+          $chunk_size = 0;
 
            $chunk = 0;
 
@@ -1505,44 +1510,69 @@ class NewContactDataController extends Controller
 
            while($chunk < $chunk_size){
                 $data = ContactTypes::find($contact_type[$contact])
-                        ->contacts()
-                        ->where('is_deleted',false)
+                        ->contacts() 
+                        ->addSelect([
+                            'total_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
+                                                ->where('user_saved_posts.is_like',1)
+                                                ->whereColumn('contacts.user_id','=','user_saved_posts.user_id'),
+                            'total_submissions'=>VisitorLikes::selectRaw('COUNT(posts.published_by) AS total_submissions')
+                                                ->whereColumn('contacts.user_id','=','posts.published_by'),
+                           'total_comments'=> UserComments::selectRaw('COUNT(user_comments.user_id) AS total_comments')
+                                                ->whereColumn('contacts.user_id','=','user_comments.user_id')
+                        ])
+                        ->where('contacts.is_deleted',false)
                         ->skip($chunk * $limit)
-                        ->take($limit)
-                        ->get();
+                        ->take($limit)->get();
+                 
+
+                if($contact == 'general_newsletter' || $contact == 'subscriber'){
 
                 $sheet = $chunk == 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
-                $sheet->setCellValue('A1', 'Pharmacy Name');
-                $sheet->setCellValue('B1', 'Pharmacy Number');
-                $sheet->setCellValue('C1', 'Address');
-                $sheet->setCellValue('D1', 'Postcode');
-                $sheet->setCellValue('E1', 'Country');
-                $sheet->setCellValue('F1', 'State');
-                $sheet->setCellValue('G1', 'Contact Person');
-                $sheet->setCellValue('H1', 'Email'); 
-                $sheet->setCellValue('I1', 'Phone Number');
-                $sheet->setCellValue('J1', 'Amount of Purchase');
-                $sheet->setCellValue('K1', 'Average of Purchase');
-                $sheet->setCellValue('L1', 'Total Purchase');
-                $sheet->setCellValue('M1', 'Last Purchase Date');
-                $sheet->setCellValue('N1', 'Created At');
+                $sheet->setCellValue('A1', 'Full Name');
+                $sheet->setCellValue('B1', 'Email'); 
+                $sheet->setCellValue('C1', 'Phone Number');
+                $sheet->setCellValue('D1', 'Whatsapp Subscription');
+                $sheet->setCellValue('E1', 'Email Subscription');
+                $sheet->setCellValue('F1', 'Created At');
                 $rows = 2;
                 foreach($data as $row){
                 $sheet->setCellValue('A' . $rows, $row['contact_name']);
-                $sheet->setCellValue('B' . $rows, $row['contact_no']);
-                $sheet->setCellValue('C' . $rows, $row['address']);
-                $sheet->setCellValue('D' . $rows, $row['postcode']);
-                $sheet->setCellValue('E' . $rows, $row['country']);
-                $sheet->setCellValue('F' . $rows, $row['state']);
-                $sheet->setCellValue('G' . $rows, $row['contact_person']);
-                $sheet->setCellValue('H' . $rows, $row['email']);
-                $sheet->setCellValue('I' . $rows, $row['phone_no']);
-                $sheet->setCellValue('J' . $rows, $row['amount_purchase']);
-                $sheet->setCellValue('K' . $rows, $row['average_purchase']);
-                $sheet->setCellValue('L' . $rows, $row['total_purchase']);
-                $sheet->setCellValue('M' . $rows, date('d F Y',strtotime($row['last_purchase_date'])));
-                $sheet->setCellValue('N' . $rows, date('d F Y',strtotime($row['created_date'])));
+                $sheet->setCellValue('B' . $rows, $row['email']);
+                $sheet->setCellValue('C' . $rows, $row['phone_no']);
+                $sheet->setCellValue('D' . $rows, $row['whatsapp_subscription']);
+                $sheet->setCellValue('E' . $rows, $row['cansativa_newsletter']);
+                $sheet->setCellValue('F' . $rows, date('d F Y',strtotime($row['created_date'])));
                 $rows++;
+                }
+
+                } else {       
+
+                $sheet = $chunk == 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
+                $sheet->setCellValue('A1', 'Full Name');
+                $sheet->setCellValue('B1', 'Email'); 
+                $sheet->setCellValue('C1', 'Phone Number');
+                $sheet->setCellValue('D1', 'Whatsapp Subscription');
+                $sheet->setCellValue('E1', 'Email Subscription');
+                $sheet->setCellValue('F1', 'Likes');
+                $sheet->setCellValue('G1', 'Comments');
+                $sheet->setCellValue('H1', 'Submissions');
+                $sheet->setCellValue('I1', 'Account Creation');
+                $sheet->setCellValue('J1', 'Latest Login');
+                $rows = 2;
+                foreach($data as $row){
+                $sheet->setCellValue('A' . $rows, $row['contact_name']);
+                $sheet->setCellValue('B' . $rows, $row['email']);
+                $sheet->setCellValue('C' . $rows, $row['phone_no']);
+                $sheet->setCellValue('D' . $rows, $row['whatsapp_subscription']);
+                $sheet->setCellValue('E' . $rows, $row['cansativa_newsletter']);
+                $sheet->setCellValue('D' . $rows, $row['total_likes']);
+                $sheet->setCellValue('E' . $rows, $row['total_comments']);
+                $sheet->setCellValue('E' . $rows, $row['total_submissions']);
+                $sheet->setCellValue('E' . $rows, date('d F Y',strtotime($row['account_creation'])));
+                $sheet->setCellValue('F' . $rows, date('d F Y',strtotime($row['created_date'])));
+                $rows++;
+                }
+
                 }
 
                 $chunk++;
@@ -1554,8 +1584,9 @@ class NewContactDataController extends Controller
             $writer = new Xlsx($spreadsheet); 
             $writer->save($filename);
 
+
            return $this->successResponse([
-                "filename"=>url('public/' . $filename)
+                "filename"=>url('public/' . $filename) 
             ],'successfully exported file',200);
 
            

@@ -15,6 +15,8 @@ class VisitorLikes extends Model
      */
     protected $fillable = [];
 
+    protected $table = 'posts';
+
     // protected static function newFactory(): VisitorLikesFactory
     // {
     //     // return VisitorLikesFactory::new();

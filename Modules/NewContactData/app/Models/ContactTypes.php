@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Modules\NewContactData\Models\Contacts;
 use Modules\NewAnalytics\Models\UserSavedPosts;
+use Modules\NewAnalytics\Models\VisitorLikes;
+use Modules\NewAnalytics\Models\UserComments;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 // use Modules\NewContactData\Database\Factories\ContactTypesFactory;
 
@@ -33,6 +35,30 @@ class ContactTypes extends Model
             Contacts::class,
             'contact_type_id', // Foreign key on Contacts table
             'user_id', // Foreign key on UserSavedPosts table
+            'id', // Local key on ContactTypes table
+            'user_id' // Local key on Contacts table
+        );
+    }
+
+    public function amountPosts(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            VisitorLikes::class,
+            Contacts::class,
+            'contact_type_id', // Foreign key on Contacts table
+            'published_by', // Foreign key on VisitorLikes table
+            'id', // Local key on ContactTypes table
+            'user_id' // Local key on Contacts table
+        );
+    }
+
+    public function amountComments(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            UserComments::class,
+            Contacts::class,
+            'contact_type_id', // Foreign key on Contacts table
+            'user_id', // Foreign key on UserComments table
             'id', // Local key on ContactTypes table
             'user_id' // Local key on Contacts table
         );
