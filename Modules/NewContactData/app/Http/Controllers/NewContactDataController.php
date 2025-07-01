@@ -1536,23 +1536,41 @@ class NewContactDataController extends Controller
                 return $this->errorResponse('invalid contact_type',400);
            }
 
-           $count = ContactTypes::find($contact_type[$contact])
+           $results = ContactTypes::find($contact_type[$contact])
            ->contacts()
-           ->where('is_deleted',false)
-           ->count();
+           ->when($request->input('applied_filters.amount_likes'),function($query,$filter){
+                $amount_likes_id = UserSavedPosts::select('user_id')
+                                ->where('is_like',1)
+                                ->groupBy('user_id')
+                                ->havingRaw('COUNT(user_id) <= ?',[$filter])
+                                ->pluck('user_id');
+                $query->whereIn('contacts.user_id',$amount_likes_id);
+           })
+          ->when($request->input('applied_filters.amount_comments'),function($query,$filter){
+                 $amount_comments_id = UserComments::select('user_id')
+                                  ->groupBy('user_id')
+                                  ->havingRaw('COUNT(user_id) <= ?',[$filter])
+                                  ->pluck('user_id');
+                 $query->whereIn('contacts.user_id',$amount_comments_id);
+          })
+          ->when($request->input('applied_filters.amount_submissions'),function($query,$filter){
+                     $amount_submissions_id = VisitorLikes::select('published_by')
+                                    ->groupBy('published_by')
+                                    ->havingRaw('COUNT(published_by) <= ?',[$filter])
+                                    ->pluck('published_by');
+                     $query->whereIn('contacts.user_id',$amount_submissions_id);
+         })
+         ->when($request->input('applied_filters.account_creation_start_date'),function($query,$filter){
+                $query->whereRaw('contacts.created_date >= ' ."'" . $filter . "'");
+         })
+         ->when($request->input('applied_filters.account_creation_end_date'),function($query,$filter){
+                $query->whereRaw('contacts.created_date <= ' . "'" . $filter . "'");
+         })
+         ->when($request->input('applied_filters.city',''),function($query,$filter){
+                $query->where('contacts.city', 'like', '%' . $filter . '%');
+         })
 
-           $limit = 25;
-
-           $chunk_size = ceil($count / $limit);
-
-           $chunk = 0;
-
-           $spreadsheet = new Spreadsheet();
-
-           while($chunk < $chunk_size){
-                $data = ContactTypes::find($contact_type[$contact])
-                        ->contacts() 
-                        ->addSelect([
+           ->addSelect([
                             'total_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
                                                 ->where('user_saved_posts.is_like',1)
                                                 ->whereColumn('contacts.user_id','=','user_saved_posts.user_id'),
@@ -1563,9 +1581,23 @@ class NewContactDataController extends Controller
                             'account_creation'=>Contacts::selectRaw('created_date')
                                                 ->whereColumn('contacts.user_id','=','id'),
                         ])
-                        ->where('contacts.is_deleted',false)
+           ->where('is_deleted',false);
+
+           $count = $results->count();
+
+           $limit = 25;
+
+           $chunk_size = ceil($count / $limit);
+
+           $chunk = 0;
+
+           $spreadsheet = new Spreadsheet();
+
+           while($chunk < $chunk_size){
+                $data = $results
                         ->skip($chunk * $limit)
-                        ->take($limit)->get();
+                        ->take($limit)
+                        ->get();
                  
 
                 if($contact == 'general_newsletter' || $contact == 'subscriber'){
@@ -1625,19 +1657,24 @@ class NewContactDataController extends Controller
         
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
             $writer = new Xlsx($spreadsheet); 
-            $writer->save($filename);
+            //$writer->save($filename);
 
-           HistoryExports::insert([
+            /* HistoryExports::insert([
                 'contact_name' => $request->contact_name,
                 'contact_type' => $request->contact_type,
                 'applied_filters' => json_encode($request->applied_filters),
                 'export_to'=> 'xlsx',
                 'amount_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
-            ]);
+            ]);  */
+
+            
 
            return $this->successResponse([
-                "filename"=>url('public/' . $filename) 
+                "filename"=>url('public/' . $filename),
+                'count'=>$count,
+                'data'=>$results->get(),
+                'sql'=> $results->toSql(),
             ],'successfully exported file',200);
 
            
