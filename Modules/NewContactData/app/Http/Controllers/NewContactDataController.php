@@ -1657,24 +1657,21 @@ class NewContactDataController extends Controller
         
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
             $writer = new Xlsx($spreadsheet); 
-            //$writer->save($filename);
+            $writer->save($filename);
 
-            /* HistoryExports::insert([
+            HistoryExports::insert([
                 'contact_name' => $request->contact_name,
                 'contact_type' => $request->contact_type,
                 'applied_filters' => json_encode($request->applied_filters),
                 'export_to'=> 'xlsx',
                 'amount_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
-            ]);  */
+            ]);
 
             
 
            return $this->successResponse([
-                "filename"=>url('public/' . $filename),
-                'count'=>$count,
-                'data'=>$results->get(),
-                'sql'=> $results->toSql(),
+                "filename"=>url('public/' . $filename)
             ],'successfully exported file',200);
 
            

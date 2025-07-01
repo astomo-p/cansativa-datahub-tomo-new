@@ -5,31 +5,32 @@ use Modules\NewContactData\Http\Controllers\NewContactDataController;
 
 Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
-    Route::get('datahub/b2b/export', [NewContactDataController::class, "exportDataB2B"]);
     Route::post('datahub/b2c/import', [NewContactDataController::class, "importData"]);
 });
 
 Route::prefix('v1')->name('api.')->group(function () {
-    Route::get('datahub/b2b/contact/pharmacy-database/parent/{parentId}', [NewContactDataController::class, "pharmacyDatabaseByParentId"]);
-    Route::post('datahub/b2b/contact/pharmacy-database/add', [NewContactDataController::class, "addPharmacyDatabase"]);
-    Route::get('datahub/b2b/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "pharmacyDatabaseByParentIdAndId"]);
-    Route::put('datahub/b2b/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "updatePharmacyDatabaseByParentIdAndId"]);
-    Route::delete('datahub/b2b/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "deletePharmacyDatabaseByParentIdAndId"]);
-    Route::get("datahub/b2b/contact/pharmacy-data/all", [NewContactDataController::class, "allPharmacyData"]);
-    Route::get("datahub/b2b/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "pharmacyDataById"]);
-    Route::post("datahub/b2b/contact/pharmacy-data/add", [NewContactDataController::class, "addPharmacyData"]);
-    Route::put("datahub/b2b/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "updatePharmacyDataById"]);
-    Route::delete("datahub/b2b/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "deletePharmacyDataById"]);
-    Route::get('datahub/b2b/contact/supplier-data/all', [NewContactDataController::class, "allSupplierData"]);
-    Route::get('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "supplierDataById"]);
-    Route::post('datahub/b2b/contact/supplier-data/add', [NewContactDataController::class, "addSupplierData"]);
-    Route::put('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "updateSupplierDataById"]);
-    Route::delete('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "deleteSupplierDataById"]);
-    Route::get('datahub/b2b/contact/top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
-    Route::get('datahub/b2b/contact/top-five-purchase-pharmacies', [NewContactDataController::class, "topFivePurchasePharmacies"]);
-    Route::get('datahub/b2b/contact/contact-growth', [NewContactDataController::class, "contactGrowthB2B"]);
-    Route::get('datahub/b2b/contact/top-contact-card', [NewContactDataController::class, "topContactCardB2B"]);
-    Route::get('datahub/b2b/contact/top-five-pharmacies-by-db', [NewContactDataController::class, "topFivePharmaciesByDatabase"]);
+   // Route::get("datahub/b2b/contact/pharmacy-data/all", [NewContactDataController::class, "allPharmacyData"]);
+    // Route::get("datahub/b2b/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "pharmacyDataById"]);
+    // Route::post("datahub/b2b/contact/pharmacy-data/add", [NewContactDataController::class, "addPharmacyData"]);
+    // Route::put("datahub/b2b/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "updatePharmacyDataById"]);
+    // Route::delete("datahub/b2b/contact/pharmacy-data/id/{id}", [NewContactDataController::class, "deletePharmacyDataById"]);
+    // Route::get('datahub/b2b/contact/supplier-data/all', [NewContactDataController::class, "allSupplierData"]);
+    // Route::get('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "supplierDataById"]);
+    // Route::post('datahub/b2b/contact/supplier-data/add', [NewContactDataController::class, "addSupplierData"]);
+    // Route::put('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "updateSupplierDataById"]);
+    // Route::delete('datahub/b2b/contact/supplier-data/id/{id}', [NewContactDataController::class, "deleteSupplierDataById"]);
+    // Route::get('datahub/b2b/contact/top-five-area-pharmacies',[NewContactDataController::class,"topFiveAreaPharmacies"]);
+    // Route::get('datahub/b2b/contact/top-five-purchase-pharmacies', [NewContactDataController::class, "topFivePurchasePharmacies"]);
+    // Route::get('datahub/b2b/contact/contact-growth', [NewContactDataController::class, "contactGrowthB2B"]);
+    // Route::get('datahub/b2b/contact/top-contact-card', [NewContactDataController::class, "topContactCardB2B"]);
+    // Route::get('datahub/b2b/contact/top-five-pharmacies-by-db', [NewContactDataController::class, "topFivePharmaciesByDatabase"]);
+    //Route::get('datahub/b2b/export', [NewContactDataController::class, "exportDataB2B"]);
+    //  Route::get('datahub/b2b/contact/general-newsletter-data/all', [NewContactDataController::class, "allGeneralNewsletterData"]);
+    // Route::get('datahub/b2b/contact/general-newsletter-data/id/{id}', [NewContactDataController::class, "generalNewsletterDataById"]);
+    // Route::post('datahub/b2b/contact/general-newsletter-data/add', [NewContactDataController::class, "addGeneralNewsletterData"]);
+    // Route::put('datahub/b2b/contact/general-newsletter-data/id/{id}', [NewContactDataController::class, "updateGeneralNewsletterDataById"]);
+    // Route::delete('datahub/b2b/contact/general-newsletter-data/id/{id}', [NewContactDataController::class, "deleteGeneralNewsletterDataById"]);
+    
 });
 
 Route::prefix('v1')->name('api.')->group(function () {
@@ -42,16 +43,19 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/contact/community-data/add', [NewContactDataController::class, "addCommunityData"]);
     Route::put('datahub/b2c/contact/community-data/id/{id}', [NewContactDataController::class, "updateCommunityDataById"]);
     Route::delete('datahub/b2c/contact/community-data/id/{id}', [NewContactDataController::class, "deleteCommunityDataById"]);
-    Route::get('datahub/b2c/contact/general-newsletter-data/all', [NewContactDataController::class, "allGeneralNewsletterData"]);
-    Route::get('datahub/b2c/contact/general-newsletter-data/id/{id}', [NewContactDataController::class, "generalNewsletterDataById"]);
-    Route::post('datahub/b2c/contact/general-newsletter-data/add', [NewContactDataController::class, "addGeneralNewsletterData"]);
-    Route::put('datahub/b2c/contact/general-newsletter-data/id/{id}', [NewContactDataController::class, "updateGeneralNewsletterDataById"]);
-    Route::delete('datahub/b2c/contact/general-newsletter-data/id/{id}', [NewContactDataController::class, "deleteGeneralNewsletterDataById"]);
-    Route::get('datahub/b2c/contact/subscriber-data/all', [NewContactDataController::class, "allSubscriberData"]);
-    Route::get('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "subscriberDataById"]);
-    Route::post('datahub/b2c/contact/subscriber-data/add', [NewContactDataController::class, "addSubscriberData"]);
-    Route::put('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "updateSubscriberDataById"]);
-    Route::delete('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "deleteSubscriberDataById"]);
+    // Route::get('datahub/b2c/contact/subscriber-data/all', [NewContactDataController::class, "allSubscriberData"]);
+    // Route::get('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "subscriberDataById"]);
+    // Route::post('datahub/b2c/contact/subscriber-data/add', [NewContactDataController::class, "addSubscriberData"]);
+    // Route::put('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "updateSubscriberDataById"]);
+    // Route::delete('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "deleteSubscriberDataById"]);
+    
+    Route::get('datahub/b2c/contact/pharmacy-database/parent/{parentId}', [NewContactDataController::class, "pharmacyDatabaseByParentId"]);
+    Route::post('datahub/b2c/contact/pharmacy-database/add', [NewContactDataController::class, "addPharmacyDatabase"]);
+    Route::get('datahub/b2c/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "pharmacyDatabaseByParentIdAndId"]);
+    Route::put('datahub/b2c/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "updatePharmacyDatabaseByParentIdAndId"]);
+    Route::delete('datahub/b2c/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "deletePharmacyDatabaseByParentIdAndId"]);
+    
+    
     /* Route::post('datahub/b2c/contact/minio-upload', [NewContactDataController::class, "minioUpload"]);
      */
     Route::get('woocommerce/customers',[NewContactDataController::class,'woocommerceCustomers']);  
