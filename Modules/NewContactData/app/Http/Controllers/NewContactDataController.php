@@ -13,6 +13,7 @@ use Modules\NewContactData\Models\B2BContactTypes;
 use Modules\NewAnalytics\Models\UserSavedPosts;
 use Modules\NewAnalytics\Models\VisitorLikes;
 use Modules\NewAnalytics\Models\UserComments;
+use Modules\NewContactData\Models\HistoryExports;
 use Modules\Users\Models\Users;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,7 @@ use GuzzleHttp\Client;
 use Automattic\WooCommerce\Client as WooClient;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
 
 class NewContactDataController extends Controller
 {
@@ -1558,8 +1560,8 @@ class NewContactDataController extends Controller
                                                 ->whereColumn('contacts.user_id','=','posts.published_by'),
                            'total_comments'=> UserComments::selectRaw('COUNT(user_comments.user_id) AS total_comments')
                                                 ->whereColumn('contacts.user_id','=','user_comments.user_id'),
-                            'account_creation'=>Users::selectRaw('created_date')
-                                                ->whereColumn('contacts.user_id','=','users.id'),
+                            'account_creation'=>Contacts::selectRaw('created_date')
+                                                ->whereColumn('contacts.user_id','=','id'),
                         ])
                         ->where('contacts.is_deleted',false)
                         ->skip($chunk * $limit)
@@ -1625,6 +1627,14 @@ class NewContactDataController extends Controller
             $writer = new Xlsx($spreadsheet); 
             $writer->save($filename);
 
+           HistoryExports::insert([
+                'contact_name' => $request->contact_name,
+                'contact_type' => $request->contact_type,
+                'applied_filters' => json_encode($request->applied_filters),
+                'export_to'=> 'xlsx',
+                'amount_contacts' => $count,
+                'created_date' => date('Y-m-d H:i:s')
+            ]);
 
            return $this->successResponse([
                 "filename"=>url('public/' . $filename) 
@@ -1717,6 +1727,39 @@ class NewContactDataController extends Controller
 
            
      }
+
+     /**
+      * xlsx import
+      */
+
+     public function importData(Request $request)
+     {
+        $file = $request->file('contact_file');
+        $reader = new XlsxReader();
+        $spreadsheet = $reader->load($file);
+        $worksheet = $spreadsheet->getActiveSheet()->toArray();
+        $results = [];
+        $first_row = $worksheet[0];
+        $count = 1; 
+        
+        while($count < count($worksheet)){
+            $row = $worksheet[$count];
+            $data = [];
+            for($i=0; $i < count($first_row); $i++){
+                if(isset($row[$i])){
+                    $data[$first_row[$i]] = $row[$i];
+                } else {
+                    $data[$first_row[$i]] = null;
+                }
+            }
+            $results[] = $data;
+            $count++;
+        }
+
+
+
+        return $this->successResponse($results,'successfully read uploaded contact data',200);
+     } 
     
     
     /**

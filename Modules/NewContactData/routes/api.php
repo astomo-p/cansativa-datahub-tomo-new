@@ -4,8 +4,9 @@ use Illuminate\Support\Facades\Route;
 use Modules\NewContactData\Http\Controllers\NewContactDataController;
 
 Route::prefix('v1')->name('api.')->group(function () {
-    Route::get('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
+    Route::post('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
     Route::get('datahub/b2b/export', [NewContactDataController::class, "exportDataB2B"]);
+    Route::post('datahub/b2c/import', [NewContactDataController::class, "importData"]);
 });
 
 Route::prefix('v1')->name('api.')->group(function () {
