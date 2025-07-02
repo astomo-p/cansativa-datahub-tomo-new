@@ -52,8 +52,8 @@ class NewContactDataController extends Controller
         $this->contact_pharmacy = B2BContactTypes::where('contact_type_name', 'PHARMACY')->first();
         $this->contact_supplier = B2BContactTypes::where('contact_type_name', 'SUPPLIER')->first();
         $this->contact_community = ContactTypes::where('contact_type_name', 'COMMUNITY')->first();
-        $this->contact_general_newsletter = ContactTypes::where('contact_type_name', 'GENERAL NEWSLETTER')->first();
-        $this->contact_pharmacy_db = B2BContactTypes::where('contact_type_name', 'PHARMACY DATABASE')->first();
+        $this->contact_general_newsletter = B2BContactTypes::where('contact_type_name', 'GENERAL NEWSLETTER')->first();
+        $this->contact_pharmacy_db = ContactTypes::where('contact_type_name', 'PHARMACY DATABASE')->first();
         $this->contact_subscriber = ContactTypes::where('contact_type_name', 'SUBSCRIBER')->first();
     }
 
@@ -810,6 +810,18 @@ class NewContactDataController extends Controller
         if($search){
             $search = trim($search);
             $results = ContactTypes::find($this->contact_community->id)->contacts()
+            ->when($request->get('account_creation_start_date'),function($query,$row){
+                $query->where('created_date','>=',"'".$row."'"); 
+            })
+            ->when($request->get('account_creation_end_date'),function($query,$row){
+                $query->where('created_date','<=',"'".$row."'"); 
+            })
+            ->when($request->get('last_login_start_date'),function($query,$row){
+                $query->where('created_date','>=',"'".$row."'");
+            })
+            ->when($request->get('last_login_end_date'),function($query,$row){  
+                $query->where('created_date','<=',"'".$row."'");
+            })
             ->when($request->get('amount_likes'),function($query,$row){
                 $query->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
@@ -838,10 +850,26 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction);
-
+            ->orderBy($sort_column, $sort_direction)->select()
+            ->addSelect('created_date as account_creation')
+            ->addSelect('created_date as last_login')
+            ->addSelect([
+                            'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
+                                                ->where('user_saved_posts.is_like',1)
+                                                ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
+                ])
+            ->addSelect([
+                            'amount_comments'=>UserComments::selectRaw('COUNT(user_comments.id) AS total_comments')
+                                                ->whereColumn('contacts.user_id','=','user_comments.user_id')
+                ])
+            ->addSelect([
+                            'amount_submissions'=>VisitorLikes::selectRaw('COUNT(posts.id) AS total_submissions')
+                                                ->whereColumn('contacts.user_id','=','posts.published_by')
+                ]);
+            
             $records_filtered = $results
             ->count();
+
             $results = $results
             ->take($length)
             ->skip($start)
@@ -849,6 +877,18 @@ class NewContactDataController extends Controller
            
         } else {
             $results = ContactTypes::find($this->contact_community->id)->contacts()
+            ->when($request->get('account_creation_start_date'),function($query,$row){
+                $query->where('created_date','>=',"'".$row."'"); 
+            })
+            ->when($request->get('account_creation_end_date'),function($query,$row){
+                $query->where('created_date','<=',"'".$row."'"); 
+            })
+            ->when($request->get('last_login_start_date'),function($query,$row){
+                $query->where('created_date','>=',"'".$row."'");
+            })
+            ->when($request->get('last_login_end_date'),function($query,$row){  
+                $query->where('created_date','<=',"'".$row."'");
+            })
             ->when($request->get('amount_likes'),function($query,$row){
                 $query->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
@@ -877,9 +917,28 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false') 
-            ->orderBy($sort_column, $sort_direction);
+            ->orderBy($sort_column, $sort_direction)
+            
+            ->select()
+            ->addSelect('created_date as account_creation')
+            ->addSelect('created_date as last_login')
+            ->addSelect([
+                            'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
+                                                ->where('user_saved_posts.is_like',1)
+                                                ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
+                ])
+            ->addSelect([
+                            'amount_comments'=>UserComments::selectRaw('COUNT(user_comments.id) AS total_comments')
+                                                ->whereColumn('contacts.user_id','=','user_comments.user_id')
+                ])
+            ->addSelect([
+                            'amount_submissions'=>VisitorLikes::selectRaw('COUNT(posts.id) AS total_submissions')
+                                                ->whereColumn('contacts.user_id','=','posts.published_by')
+                ]);
+            
             $records_filtered = $results
             ->count();
+
             $results = $results 
             ->take($length)
             ->skip($start)
@@ -1659,11 +1718,17 @@ class NewContactDataController extends Controller
             $writer = new Xlsx($spreadsheet); 
             $writer->save($filename);
 
+            app()
+            ->call('Modules\Whatsapp\Http\Controllers\WhatsappMessageController@sendText',
+            [
+                'request' => request()->merge(['contactId'=>1,'text'=>url('public/' . $filename)])
+            ]);
+
             HistoryExports::insert([
                 'contact_name' => $request->contact_name,
                 'contact_type' => $request->contact_type,
                 'applied_filters' => json_encode($request->applied_filters),
-                'export_to'=> 'xlsx',
+                'export_to'=> $request->get('export_to','.xlsx'),
                 'amount_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
             ]);
@@ -1790,9 +1855,55 @@ class NewContactDataController extends Controller
             $count++;
         }
 
+        $parent_names = [];
+        foreach($results as $key=>$result){
+            array_push($parent_names,$result['parent_name']);
+        }
 
+        $contact_type = $request->contact_type;
+        $contact_type_id = 0;
+        switch($contact_type){
+            case 'pharmacy-database':
+                $contact_type_id = $this->contact_pharmacy_db->id;
+                break; 
+            case 'community':
+                $contact_type_id = $this->contact_community->id;
+                break;
+        }
 
-        return $this->successResponse($results,'successfully read uploaded contact data',200);
+        if($contact_type == 'pharmacy-database'){
+            cache()->remember('imported',now()->addMinutes(1),function() use ($parent_names){
+                    return B2BContacts::select('id','contact_name')->whereIn('contact_name',$parent_names)->get();
+            });
+            $cache = cache('imported'); 
+        }  
+
+        $inserted = [];
+        foreach($results as $key=>$result){
+            $data = [];
+            for($i=0; $i < count($result); $i++){
+               if($first_row[$i] == 'parent_name' && $contact_type == 'pharmacy-database'){   
+                $parent_ids = $cache->where('contact_name',$result[$first_row[$i]])->pluck('id')->all();
+                $data['contact_parent_id'] = $parent_ids[0];
+               } 
+               else if($first_row[$i] == 'parent_name' && $contact_type != 'pharmacy-database'){
+                $data['contact_parent_id'] = 0;
+               } 
+               else {
+               $data[$first_row[$i]] = $result[$first_row[$i]];
+               }
+               $data['contact_type_id'] = $contact_type_id;
+               $data['created_by'] = 12;
+               $data['created_date'] = date('Y-m-d H:i:s');
+               $data['updated_by'] = 12;
+               $data['updated_date'] = date('Y-m-d H:i:s');
+            }
+            array_push($inserted,$data);
+        }
+
+        Contacts::insert($inserted);
+
+        return $this->successResponse([],'successfully read uploaded contact data',200);
      } 
     
     
