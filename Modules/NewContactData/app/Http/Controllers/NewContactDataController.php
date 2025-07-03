@@ -151,7 +151,7 @@ class NewContactDataController extends Controller
         ];
 
         //pharmacy
-        $pharmacy = [];
+       /*  $pharmacy = [];
         for($i = 1; $i <= 12; $i++){
             $pharmacy[$i] = ContactTypes::find($this->contact_pharmacy->id)->contacts()
             ->whereMonth('created_date', $i)
@@ -161,10 +161,10 @@ class NewContactDataController extends Controller
         $pharmacy_result = [];
         foreach($pharmacy as $key => $value){
             $pharmacy_result[$months[$key]] = (int) $value;
-        }
+        } */
 
         //supplier
-        $supplier = [];
+        /* $supplier = [];
         for($i = 1; $i <= 12; $i++){
             $supplier[$i] = ContactTypes::find($this->contact_supplier->id)->contacts()
             ->whereMonth('created_date', $i)
@@ -174,7 +174,7 @@ class NewContactDataController extends Controller
         $supplier_result = [];
         foreach($supplier as $key => $value){
             $supplier_result[$months[$key]] = (int) $value;
-        }
+        } */
 
         //community
         $community = [];
@@ -190,7 +190,7 @@ class NewContactDataController extends Controller
         }
 
         //general newsletter
-        $general_newsletter = [];
+       /*  $general_newsletter = [];
         for($i = 1; $i <= 12; $i++){
             $general_newsletter[$i] = ContactTypes::find($this->contact_general_newsletter->id)->contacts()
             ->whereMonth('created_date', $i)
@@ -200,7 +200,7 @@ class NewContactDataController extends Controller
         $general_newsletter_result = [];
         foreach($general_newsletter as $key => $value){
             $general_newsletter_result[$months[$key]] = (int) $value;
-        }
+        } */
 
         //pharmacy db
         $pharmacy_db = [];
@@ -231,9 +231,9 @@ class NewContactDataController extends Controller
         $res = [
           //'Pharmacies' => $pharmacy_result,
           //'Suppliers' => $supplier_result,
-          'General Newsletter' => $general_newsletter_result,
+          //'General Newsletter' => $general_newsletter_result,
           'Community' => $community_result,
-          //'Pharmacy Database' => $pharmacy_db_result,
+          'Pharmacy Database' => $pharmacy_db_result,
           'Subscriber' => $subscriber_result
         ];
        return $this->successResponse($res,'Contact growth',200);
@@ -1725,7 +1725,7 @@ class NewContactDataController extends Controller
         
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
             $writer = new Xlsx($spreadsheet); 
-           // $writer->save($filename);
+            $writer->save($filename);
 
            $brevo_id = 0;
 
@@ -1739,23 +1739,25 @@ class NewContactDataController extends Controller
           
           if($request->get('export_to') == 'email'){
 
+            $recipient = Contacts::where('user_id',$request->get('user_id'))->get();
+
             try {
 
             $campaign = Http::withHeaders([
                 'api-key' => env('BREVO_API_KEY'),
                 'content-type' => 'application/json',
                 'accept' => 'application/json'
-            ])->post(env('BREVO_API_URL') . '/emailCampaigns', [
+            ])->post(env('BREVO_API_URL') . '/smtp/email', [
                 'name' => 'Contact Data Export',
                 'subject' => 'Your Contact Data Report is Ready',
                 'sender' => [
                     'name' => 'Cansativa',
-                    'email' => 'noreply@gmail.com',
+                    'email' => env('BREVO_SENDER_EMAIL','siroja@kemang.sg'),
                 ],
                 'htmlContent' => "<html><body><h1>Please download your report</h1><p><a href='".url('public/' . $filename)."'>Here</a></p></body></html>",
                 'to' => [
                     [
-                        'email' => 'tomo@kemang.sg'
+                        'email' => $recipient[0]->email
                     ]
                 ]
             ]);
@@ -1764,7 +1766,7 @@ class NewContactDataController extends Controller
 
             $brevo_id = $campaign;
 
-           /*  $campaign_id = $campaign->json()['id'];
+            /* $campaign_id = $campaign->json()['id'];
 
             $sent = Http::withHeaders([
                 'api-key' => env('BREVO_API_KEY'),
@@ -1772,7 +1774,7 @@ class NewContactDataController extends Controller
                 'accept' => 'application/json'
             ])->post(env('BREVO_API_URL') . '/emailCampaigns/' . $campaign_id . '/sendNow',[
                 'emailTo' => ['tomo@kemang.sg'], 
-            ]);   */ 
+            ]);   */
 
         }
             catch(Exception $e){
@@ -1782,20 +1784,19 @@ class NewContactDataController extends Controller
 
         }
 
-            /* HistoryExports::insert([
+             HistoryExports::insert([
                 'contact_name' => $request->contact_name,
                 'contact_type' => $request->contact_type,
                 'applied_filters' => json_encode($request->applied_filters),
                 'export_to'=> $request->get('export_to','.xlsx'),
                 'amount_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
-            ]); */
+            ]); 
 
             
 
            return $this->successResponse([
-                "filename"=>url('public/' . $filename),
-                "brevo"=>$brevo_id
+                "filename"=>url('public/' . $filename)
             ],'successfully exported file',200);
 
            
