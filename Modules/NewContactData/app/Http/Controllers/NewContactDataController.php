@@ -23,6 +23,7 @@ use Automattic\WooCommerce\Client as WooClient;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
+use Illuminate\Support\Facades\Http;
 
 class NewContactDataController extends Controller
 {
@@ -1514,9 +1515,9 @@ class NewContactDataController extends Controller
     {
        
         $woocommerce = new WooClient(
-                'https://bb4mgd1.myrdbx.io',
-                'ck_d9c04361efce8629f4a55dfcf475dbcfaa2d4cff',
-                'cs_115ff19114a66132e3fdca922f74eb28dcebac74',
+                env('WOOCOMERCE_API_URL'),
+                env('WOOCOMMERCE_CLIENT_KEY'),
+                env('WOOCOMMERCE_CLIENT_SECRET'),
                 [
                         'timeout' => '29',
                         'wp_api' => true,
@@ -1588,7 +1589,7 @@ class NewContactDataController extends Controller
             $contact_type = [
                 'community'=>$this->contact_community->id,
                 'subscriber'=>$this->contact_subscriber->id,
-                'general_newsletter'=>$this->contact_general_newsletter->id
+                'pharmacy-db'=>$this->contact_pharmacy_db->id
             ];
 
            if(!array_key_exists($contact,$contact_type)){
@@ -1625,6 +1626,12 @@ class NewContactDataController extends Controller
          ->when($request->input('applied_filters.account_creation_end_date'),function($query,$filter){
                 $query->whereRaw('contacts.created_date <= ' . "'" . $filter . "'");
          })
+          ->when($request->input('applied_filters.last_login_start_date'),function($query,$filter){
+                $query->whereRaw('contacts.created_date >= ' ."'" . $filter . "'");
+         })
+         ->when($request->input('applied_filters.last_login_end_date'),function($query,$filter){
+                $query->whereRaw('contacts.created_date <= ' . "'" . $filter . "'");
+         })
          ->when($request->input('applied_filters.city',''),function($query,$filter){
                 $query->where('contacts.city', 'like', '%' . $filter . '%');
          })
@@ -1638,6 +1645,8 @@ class NewContactDataController extends Controller
                            'total_comments'=> UserComments::selectRaw('COUNT(user_comments.user_id) AS total_comments')
                                                 ->whereColumn('contacts.user_id','=','user_comments.user_id'),
                             'account_creation'=>Contacts::selectRaw('created_date')
+                                                ->whereColumn('contacts.user_id','=','id'),
+                            'last_login'=>Contacts::selectRaw('created_date')
                                                 ->whereColumn('contacts.user_id','=','id'),
                         ])
            ->where('is_deleted',false);
@@ -1716,27 +1725,77 @@ class NewContactDataController extends Controller
         
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
             $writer = new Xlsx($spreadsheet); 
-            $writer->save($filename);
+           // $writer->save($filename);
 
+           $brevo_id = 0;
+
+           if($request->get('export_to') == 'whatspp'){
             app()
             ->call('Modules\Whatsapp\Http\Controllers\WhatsappMessageController@sendText',
             [
                 'request' => request()->merge(['contactId'=>1,'text'=>url('public/' . $filename)])
             ]);
+          } 
+          
+          if($request->get('export_to') == 'email'){
 
-            HistoryExports::insert([
+            try {
+
+            $campaign = Http::withHeaders([
+                'api-key' => env('BREVO_API_KEY'),
+                'content-type' => 'application/json',
+                'accept' => 'application/json'
+            ])->post(env('BREVO_API_URL') . '/emailCampaigns', [
+                'name' => 'Contact Data Export',
+                'subject' => 'Your Contact Data Report is Ready',
+                'sender' => [
+                    'name' => 'Cansativa',
+                    'email' => 'noreply@gmail.com',
+                ],
+                'htmlContent' => "<html><body><h1>Please download your report</h1><p><a href='".url('public/' . $filename)."'>Here</a></p></body></html>",
+                'to' => [
+                    [
+                        'email' => 'tomo@kemang.sg'
+                    ]
+                ]
+            ]);
+
+            $campaign->throw();
+
+            $brevo_id = $campaign;
+
+           /*  $campaign_id = $campaign->json()['id'];
+
+            $sent = Http::withHeaders([
+                'api-key' => env('BREVO_API_KEY'),
+                'content-type' => 'application/json',
+                'accept' => 'application/json'
+            ])->post(env('BREVO_API_URL') . '/emailCampaigns/' . $campaign_id . '/sendNow',[
+                'emailTo' => ['tomo@kemang.sg'], 
+            ]);   */ 
+
+        }
+            catch(Exception $e){
+                return $this->errorResponse('Error',500, 'Failed to send email: ' . $e->getMessage());
+ 
+            }
+
+        }
+
+            /* HistoryExports::insert([
                 'contact_name' => $request->contact_name,
                 'contact_type' => $request->contact_type,
                 'applied_filters' => json_encode($request->applied_filters),
                 'export_to'=> $request->get('export_to','.xlsx'),
                 'amount_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
-            ]);
+            ]); */
 
             
 
            return $this->successResponse([
-                "filename"=>url('public/' . $filename)
+                "filename"=>url('public/' . $filename),
+                "brevo"=>$brevo_id
             ],'successfully exported file',200);
 
            
@@ -1748,7 +1807,7 @@ class NewContactDataController extends Controller
             $contact_type = [
                 'pharmacy'=>$this->contact_pharmacy->id,
                 'supplier'=>$this->contact_supplier->id,
-                'pharmacy-db'=>$this->contact_pharmacy_db->id
+                'general_newsletter'=>$this->contact_general_newsletter->id
             ];
 
            if(!array_key_exists($contact,$contact_type)){
