@@ -845,6 +845,12 @@ class NewContactDataController extends Controller
                                                 ->whereColumn('contacts.user_id','=','posts.published_by')
                 ]);
             })
+            ->when($request->get('subscribed_to_whatsapp'),function($query,$row){
+                $query->where('whatsapp_subscription',true);
+            })
+            ->when($request->get('subscribed_to_email'),function($query,$row){
+                $query->where('cansativa_newsletter',true);
+            })
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
@@ -854,6 +860,7 @@ class NewContactDataController extends Controller
             ->orderBy($sort_column, $sort_direction)->select()
             ->addSelect('created_date as account_creation')
             ->addSelect('created_date as last_login')
+            ->addSelect('cansativa_newsletter as email_subscription')
             ->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
                                                 ->where('user_saved_posts.is_like',1)
@@ -912,6 +919,12 @@ class NewContactDataController extends Controller
                                                 ->whereColumn('contacts.user_id','=','posts.published_by')
                 ]);
             })
+            ->when($request->get('subscribed_to_whatsapp'),function($query,$row){
+                $query->where('whatsapp_subscription',true);
+            })
+            ->when($request->get('subscribed_to_email'),function($query,$row){
+                $query->where('cansativa_newsletter',true);
+            })
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
@@ -922,7 +935,8 @@ class NewContactDataController extends Controller
             
             ->select()
             ->addSelect('created_date as account_creation')
-            ->addSelect('created_date as last_login')
+            ->addSelect('created_date as last_login') 
+            ->addSelect('cansativa_newsletter as email_subscription')
             ->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
                                                 ->where('user_saved_posts.is_like',1)
@@ -943,7 +957,7 @@ class NewContactDataController extends Controller
             $results = $results 
             ->take($length)
             ->skip($start)
-            ->get();
+            ->get();  
         }
         
         $res = [
@@ -963,9 +977,20 @@ class NewContactDataController extends Controller
      {
         $request_data = json_decode($request->getContent(), true);
 
+        // Format the request data
+        $formatted_request_data = [];
+
+        foreach($request_data as $key => $value){
+            if($key == 'email_subscription'){
+                $formatted_request_data['cansativa_newsletter'] = $value;
+            } else {
+                $formatted_request_data[$key] = $value;
+            }
+        }
+
         // Create the contact
        // Contacts::create($request_data);
-       Contacts::insert($request_data);
+       Contacts::insert($formatted_request_data);
 
         return $this->successResponse(null,'Community data added successfully',200);
      }
@@ -982,8 +1007,19 @@ class NewContactDataController extends Controller
             }
             $request_data = json_decode($request->getContent(), true);
 
+            // Format the request data
+            $formatted_request_data = [];
+
+            foreach($request_data as $key => $value){
+                if($key == 'email_subscription'){
+                    $formatted_request_data['cansativa_newsletter'] = $value;
+                } else {
+                    $formatted_request_data[$key] = $value;
+                }
+            }
+
             // Update the contact
-           Contacts::where('id', $id)->update($request_data);
+           Contacts::where('id', $id)->update($formatted_request_data);
 
             return $this->successResponse(null,'Community data updated successfully',200);
         }
@@ -1730,11 +1766,28 @@ class NewContactDataController extends Controller
            $brevo_id = 0;
 
            if($request->get('export_to') == 'whatspp'){
-            app()
-            ->call('Modules\Whatsapp\Http\Controllers\WhatsappMessageController@sendText',
-            [
-                'request' => request()->merge(['contactId'=>1,'text'=>url('public/' . $filename)])
-            ]);
+
+            $recipient = Contacts::where('user_id',$request->get('user_id'))->get();
+            
+                try {
+                    $endpoint = env('WHATSAPP_API_URL') . '/' . env('WHATSAPP_PHONE_NUMBER_ID') . '/messages';
+                    $response = Http::withToken(env('WHATSAPP_API_TOKEN'))
+                    ->post($endpoint, [
+                        'messaging_product' => 'whatsapp',
+                        'recipient_type' => 'individual',
+                        'to' => $recipient[0]->phone_no,
+                        'type' => 'text',
+                        'text' => [
+                            'body' => 'Please download your report here:' . url('public/' . $filename)
+                        ]
+                    ]);
+
+                    $responseData = $response->throw();
+                }
+                catch(Exception $e){
+                    return $this->errorResponse('Error',500, 'Failed to send whatsapp: ' . $e->getMessage());
+                }
+
           } 
           
           if($request->get('export_to') == 'email'){
@@ -1791,7 +1844,7 @@ class NewContactDataController extends Controller
                 'export_to'=> $request->get('export_to','.xlsx'),
                 'amount_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
-            ]); 
+            ]);   
 
             
 
@@ -1965,6 +2018,26 @@ class NewContactDataController extends Controller
 
         return $this->successResponse([],'successfully read uploaded contact data',200);
      } 
+
+     /**
+      * Get all contact types data
+      */
+
+     public function contactTypesData(Request $request)
+     {
+         $results = ContactTypes::all();
+         return $this->successResponse($results,'successfully retrieved all contact types data',200);
+     } 
+
+     /**
+      * Get all history exports data
+      */
+
+     public function historyExports(Request $request)
+     {
+        $results = HistoryExports::all();
+         return $this->successResponse($results,'successfully retrieved all history exports data',200);
+     }
     
     
     /**
