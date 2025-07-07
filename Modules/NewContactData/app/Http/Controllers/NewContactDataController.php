@@ -15,6 +15,7 @@ use Modules\NewAnalytics\Models\VisitorLikes;
 use Modules\NewAnalytics\Models\UserComments;
 use Modules\NewContactData\Models\HistoryExports;
 use Modules\Users\Models\Users;
+use Modules\NewContactData\Models\SavedFilters;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
@@ -980,10 +981,14 @@ class NewContactDataController extends Controller
         // Format the request data
         $formatted_request_data = [];
 
+        $blocked = ['likes','comments','submissions'];
+
         foreach($request_data as $key => $value){
             if($key == 'email_subscription'){
                 $formatted_request_data['cansativa_newsletter'] = $value;
-            } else {
+            } else if(in_array($key,$blocked)){} 
+            
+            else {
                 $formatted_request_data[$key] = $value;
             }
         }
@@ -992,7 +997,7 @@ class NewContactDataController extends Controller
        // Contacts::create($request_data);
        Contacts::insert($formatted_request_data);
 
-        return $this->successResponse(null,'Community data added successfully',200);
+        return $this->successResponse($formatted_request_data,'Community data added successfully',200);
      }
 
      /**
@@ -1209,7 +1214,23 @@ class NewContactDataController extends Controller
 
         // Create the contact
        // Contacts::create($request_data);
-       B2BContacts::insert($request_data);
+
+        // Format the request data
+        $formatted_request_data = [];
+
+        $blocked = ['likes','comments','submissions'];
+
+        foreach($request_data as $key => $value){
+            if($key == 'email_subscription'){
+                $formatted_request_data['cansativa_newsletter'] = $value;
+            } else if(in_array($key,$blocked)){} 
+            
+            else {
+                $formatted_request_data[$key] = $value;
+            }
+        }
+
+       Contacts::insert($formatted_request_data);
 
         return $this->successResponse(null,'Pharmacy database data added successfully',200);
     }
@@ -1220,7 +1241,7 @@ class NewContactDataController extends Controller
 
     public function pharmacyDatabaseByParentId(Request $request,$parentId)
     {
-        $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+        $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
         ->where('contact_parent_id', $parentId)
         ->where('contacts.is_deleted', 'false')
         ->get();
@@ -1242,7 +1263,7 @@ class NewContactDataController extends Controller
 
         if($search){
             $search = trim($search);
-            $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
@@ -1258,7 +1279,7 @@ class NewContactDataController extends Controller
             ->skip($start)
             ->get();
         } else {
-            $results = B2BContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
             ->where('contacts.is_deleted', 'false')
             ->orderBy($sort_column, $sort_direction);
@@ -1285,7 +1306,7 @@ class NewContactDataController extends Controller
 
     public function updatePharmacyDatabaseByParentIdAndId(Request $request, $parentId, $id)
     {
-        $result = B2BContacts::find($parentId)->pharmacyChilds()->where('id', $id)->get();
+        $result = Contacts::find($parentId)->pharmacyChilds()->where('id', $id)->get();
         if(!$result){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
@@ -1294,7 +1315,7 @@ class NewContactDataController extends Controller
         $request_data = json_decode($request->getContent(), true);
         try {
             // Update the contact childs
-            B2BContacts::find($parentId)->pharmacyChilds()
+            Contacts::find($parentId)->pharmacyChilds()
             ->where('id', $id)
             ->update($request_data);
             DB::commit();
@@ -1312,7 +1333,7 @@ class NewContactDataController extends Controller
 
     public function pharmacyDatabaseByParentIdAndId(Request $request, $parentId, $id)
     {
-        $parent = B2BContacts::find($parentId);
+        $parent = Contacts::find($parentId);
         if(!$parent){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
@@ -1327,7 +1348,7 @@ class NewContactDataController extends Controller
 
      public function deletePharmacyDatabaseByParentIdAndId($parentId, $id)
      {
-        $parent = B2BContacts::find($parentId);
+        $parent = Contacts::find($parentId);
         if(!$parent){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
@@ -1335,7 +1356,7 @@ class NewContactDataController extends Controller
         DB::beginTransaction();
         try {
             // Soft delete the contact
-            B2BContacts::find($id)->update(['is_deleted' => true]);
+            Contacts::find($id)->update(['is_deleted' => true]);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2039,7 +2060,47 @@ class NewContactDataController extends Controller
          return $this->successResponse($results,'successfully retrieved all history exports data',200);
      }
     
-    
+    /**
+     * Get saved filters data
+     */
+
+    public function savedFilters(Request $request)
+    {
+        $results = SavedFilters::when($request->get('filter_name'),function($query,$row){
+            $query->orWhere('filter_name','ilike','%'.$row.'%');
+        })->when($request->get('filter_id'),function($query,$row){
+            $query->orWhere('id',$row);
+        })->get();
+
+        $final_results = [];
+
+        foreach($results as $key => $row){
+            $final_results[] = [
+                "id"=>$row['id'],
+                "filter_name"=>$row['filter_name'],
+                "applied_filters"=>json_decode($row['applied_filters'])
+            ];
+        }
+
+        return $this->successResponse($final_results,'successfully retrieved all saved filters data',200);
+    }
+
+    /**
+     * Add saved filters data
+     */
+
+    public function savedFiltersAdd(Request $request)
+    {
+        
+        $request_data = json_decode($request->getContent(),true);
+        SavedFilters::insert($request_data);
+
+        return $this->successResponse([],'successfully add saved filters data',200);
+
+    }
+
+
+
     /**
      * Display a listing of the resource.
      */

@@ -8,6 +8,8 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/import', [NewContactDataController::class, "importData"]);
     Route::get('datahub/b2c/contact/contact-types-data/all', [NewContactDataController::class, "contactTypesData"]);
     Route::get('datahub/b2c/contact/history-exports', [NewContactDataController::class, "historyExports"]);
+    Route::get('datahub/b2c/contact/saved-filters', [NewContactDataController::class, "savedFilters"]);
+    Route::post('datahub/b2c/contact/saved-filters/add', [NewContactDataController::class, "savedFiltersAdd"]);
 });
 
 Route::prefix('v1')->name('api.')->group(function () {
