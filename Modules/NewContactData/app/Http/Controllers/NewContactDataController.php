@@ -805,7 +805,7 @@ class NewContactDataController extends Controller
 
         //basic response metrics
         $records_total = ContactTypes::find($this->contact_community->id)->contacts()
-        ->where('contacts.is_deleted', 'false')
+        ->where('contacts.is_deleted', false) 
         ->count();
         $records_filtered = $records_total;
 
@@ -827,7 +827,7 @@ class NewContactDataController extends Controller
             ->when($request->get('amount_likes'),function($query,$row){
                 $query->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
-                                                ->where('user_saved_posts.is_like',1)
+                                                ->where('user_saved_posts.is_like',true)
                                                 ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row])
                                                 ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
                 ]);
@@ -864,7 +864,7 @@ class NewContactDataController extends Controller
             ->addSelect('cansativa_newsletter as email_subscription')
             ->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
-                                                ->where('user_saved_posts.is_like',1)
+                                                ->where('user_saved_posts.is_like',true)
                                                 ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
                 ])
             ->addSelect([
@@ -901,7 +901,7 @@ class NewContactDataController extends Controller
             ->when($request->get('amount_likes'),function($query,$row){
                 $query->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
-                                                ->where('user_saved_posts.is_like',1)
+                                                ->where('user_saved_posts.is_like',true)
                                                 ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row])
                                                 ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
                 ]);
@@ -940,7 +940,7 @@ class NewContactDataController extends Controller
             ->addSelect('cansativa_newsletter as email_subscription')
             ->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
-                                                ->where('user_saved_posts.is_like',1)
+                                                ->where('user_saved_posts.is_like',true)
                                                 ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
                 ])
             ->addSelect([
@@ -1408,7 +1408,7 @@ class NewContactDataController extends Controller
             ->when($request->get('amount_likes'),function($query,$row){
                 $query->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
-                                                ->where('user_saved_posts.is_like',1)
+                                                ->where('user_saved_posts.is_like',true)
                                                 ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row])
                                                 ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
                 ]);
@@ -1446,7 +1446,7 @@ class NewContactDataController extends Controller
             ->when($request->get('amount_likes'),function($query,$row){
                 $query->addSelect([
                             'amount_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
-                                                ->where('user_saved_posts.is_like',1)
+                                                ->where('user_saved_posts.is_like',true)
                                                 ->havingRaw('COUNT(user_saved_posts.is_like) <= ?',[$row])
                                                 ->whereColumn('contacts.user_id','=','user_saved_posts.user_id')
                 ]);
@@ -1695,7 +1695,7 @@ class NewContactDataController extends Controller
 
            ->addSelect([
                             'total_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
-                                                ->where('user_saved_posts.is_like',1)
+                                                ->where('user_saved_posts.is_like',true)
                                                 ->whereColumn('contacts.user_id','=','user_saved_posts.user_id'),
                             'total_submissions'=>VisitorLikes::selectRaw('COUNT(posts.published_by) AS total_submissions')
                                                 ->whereColumn('contacts.user_id','=','posts.published_by'),
@@ -2099,7 +2099,117 @@ class NewContactDataController extends Controller
 
     }
 
+    /**
+     * Get community data with scroll
+     */
 
+    public function communityDataScroll(Request $request)
+    {
+        $total = Contacts::where('contact_type_id',$this->contact_community->id)
+        ->where('is_deleted',false)
+        ->count();
+
+        $page = $request->get('page', 1);  
+
+        $community = Contacts::where('contact_type_id',$this->contact_community->id)
+        ->where('is_deleted',false);
+
+        $list_community_id = $community->orderBy('id','asc')->pluck('id')->all(); 
+
+        $results = null;
+
+        if($page == 1 || $page < 1){
+            $results = $community
+            ->where('id',$list_community_id[0])->get();
+        } else if($page > $total) {
+
+        }
+        else { 
+            $results = $community
+            ->where('id',$list_community_id[$page - 1])
+            ->get(); 
+        }
+
+        return $this->successResponse([
+            'total' => $total,
+            'page' => (int) $page,
+            'detail' => $results
+        ],'successfully retrieved community data with scroll',200);
+    }
+
+    /**
+     * Get pharmacy database data with scroll
+     */
+
+    public function pharmacyDatabaseScroll(Request $request)
+    {
+        $total = Contacts::where('contact_type_id',$this->contact_pharmacy_db->id)
+        ->where('is_deleted',false)
+        ->count();  
+        $page = $request->get('page', 1);
+        $pharmacy = Contacts::where('contact_type_id',$this->contact_pharmacy_db->id)
+        ->where('is_deleted',false);
+        $list_pharmacy_id = $pharmacy->orderBy('id','asc')->pluck('id')->all();
+        $results = null;
+        if($page == 1 || $page < 1){
+            $results = $pharmacy
+            ->where('id',$list_pharmacy_id[0])->get();
+        } else if($page > $total) {
+
+        }
+        else { 
+            $results = $pharmacy
+            ->where('id',$list_pharmacy_id[$page - 1])
+            ->get(); 
+        }
+
+        return $this->successResponse([
+            'total' => $total,
+            'page' => (int) $page,
+            'detail' => $results
+        ],'successfully retrieved pharmacy database data with scroll',200);
+    }
+
+
+    /**
+     * Get community data user stats
+     */
+
+    public function communityDataUserStats(Request $request)
+    {
+        $community = Contacts::where('contact_type_id',$this->contact_community->id)
+        ->where('is_deleted',false);
+
+        $total = $community->count();
+
+        $new_this_month = $community->whereMonth('created_date', date('m'))
+        ->whereYear('created_date', date('Y'))->count();
+
+        return $this->successResponse([
+            'total_user' => $total,
+            'new_user_this_month' => $new_this_month
+        ],'successfully retrieved community data user stats',200);
+    }
+
+    /**
+     * Get pharmacy database user stats
+     */
+
+    public function pharmacyDatabaseUserStats(Request $request)
+    {
+        $pharmacy = Contacts::where('contact_type_id',$this->contact_pharmacy_db->id)
+        ->where('is_deleted',false);
+
+        $total = $pharmacy->count();
+
+        $new_this_month = $pharmacy->whereMonth('created_date', date('m'))
+        ->whereYear('created_date', date('Y'))->count();
+
+        return $this->successResponse([
+            'total_user' => $total,
+            'new_user_this_month' => $new_this_month
+        ],'successfully retrieved pharmacy database user stats',200);
+    }
 
     /**
      * Display a listing of the resource.

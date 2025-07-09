@@ -10,6 +10,10 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('datahub/b2c/contact/history-exports', [NewContactDataController::class, "historyExports"]);
     Route::get('datahub/b2c/contact/saved-filters', [NewContactDataController::class, "savedFilters"]);
     Route::post('datahub/b2c/contact/saved-filters/add', [NewContactDataController::class, "savedFiltersAdd"]);
+    Route::get('datahub/b2c/contact/community-data/scroll', [NewContactDataController::class, "communityDataScroll"]);
+    Route::get('datahub/b2c/contact/pharmacy-database/scroll', [NewContactDataController::class, "pharmacyDatabaseScroll"]);
+    Route::get('datahub/b2c/contact/community-data/user-stats', [NewContactDataController::class, "communityDataUserStats"]);
+    Route::get('datahub/b2c/contact/pharmacy-database/user-stats', [NewContactDataController::class, "pharmacyDatabaseUserStats"]);
 });
 
 Route::prefix('v1')->name('api.')->group(function () {
