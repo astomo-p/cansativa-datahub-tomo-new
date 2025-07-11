@@ -6,6 +6,7 @@ use Modules\NewContactData\Http\Controllers\NewContactDataController;
 Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
     Route::post('datahub/b2c/import', [NewContactDataController::class, "importData"]);
+    Route::post('datahub/b2c/import/save', [NewContactDataController::class, "importSave"]);
     Route::get('datahub/b2c/contact/contact-types-data/all', [NewContactDataController::class, "contactTypesData"]);
     Route::get('datahub/b2c/contact/history-exports', [NewContactDataController::class, "historyExports"]);
     Route::get('datahub/b2c/contact/saved-filters', [NewContactDataController::class, "savedFilters"]);
