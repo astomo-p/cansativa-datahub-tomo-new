@@ -1057,7 +1057,22 @@ class NewContactDataController extends Controller
         if(!$result){
             return $this->errorResponse('Error',404, 'Community not found');
         }
-       return $this->successResponse($result,'Community data by ID',200);
+
+        $formatted_results = []; 
+
+        foreach($result->toArray() as $key => $value){
+            if($key == 'custom_fields'){
+                $json = json_decode($value, true);
+                foreach($json as $field_key => $field_value){
+                    $formatted_results[$field_key] = $field_value;
+                }
+            }
+            else {
+            $formatted_results[$key] = $value; 
+            }
+        }          
+
+       return $this->successResponse([$formatted_results],'Community data by ID',200);
       } 
 
       /**
@@ -1379,7 +1394,23 @@ class NewContactDataController extends Controller
         $result = Contacts::where('id', $id)
             ->where('contact_parent_id', $parentId)->first();
 
-       return $this->successResponse($result,'Pharmacy database data by ID',200);
+        $formatted_results = []; 
+
+        foreach($result->toArray() as $key => $value){
+            if($key == 'custom_fields'){
+                $json = json_decode($value, true);
+                foreach($json as $field_key => $field_value){
+                    $formatted_results[$field_key] = $field_value;
+                }
+            }
+            else {
+            $formatted_results[$key] = $value; 
+            }
+        }          
+        
+    
+
+       return $this->successResponse($formatted_results,'Pharmacy database data by ID',200);
     }
 
     /**
