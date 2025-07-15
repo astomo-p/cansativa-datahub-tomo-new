@@ -1853,11 +1853,12 @@ class NewContactDataController extends Controller
         
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
             $writer = new Xlsx($spreadsheet); 
-            $writer->save($filename);
+            //$writer->save($filename);
 
            $brevo_id = 0;
+           $recipient = [];
 
-           if($request->get('export_to') == 'whatspp'){
+           if($request->get('export_to') == 'whatsapp'){
 
             $recipient = Contacts::where('user_id',$request->get('user_id'))->get();
             
@@ -1868,9 +1869,23 @@ class NewContactDataController extends Controller
                         'messaging_product' => 'whatsapp',
                         'recipient_type' => 'individual',
                         'to' => $recipient[0]->phone_no,
-                        'type' => 'text',
-                        'text' => [
-                            'body' => 'Please download your report here:' . url('public/' . $filename)
+                        'type' => 'template',
+                        'template' => [
+                            'name' => 'report_template_cta',
+                            'language' => [
+                                'code' => 'en'
+                            ],
+                            'components' => [
+                               [
+                                 'type' => 'button',
+                                 'sub_type' => 'url',
+                                 'index' => 0,
+                                 'parameters' => [[
+                                                'type' => 'text',
+                                                'text' => 'public/' . $filename
+                                                 ]]
+                               ]
+                            ]
                         ]
                     ]);
 
@@ -1911,16 +1926,6 @@ class NewContactDataController extends Controller
 
             $brevo_id = $campaign;
 
-            /* $campaign_id = $campaign->json()['id'];
-
-            $sent = Http::withHeaders([
-                'api-key' => env('BREVO_API_KEY'),
-                'content-type' => 'application/json',
-                'accept' => 'application/json'
-            ])->post(env('BREVO_API_URL') . '/emailCampaigns/' . $campaign_id . '/sendNow',[
-                'emailTo' => ['tomo@kemang.sg'], 
-            ]);   */
-
         }
             catch(Exception $e){
                 return $this->errorResponse('Error',500, 'Failed to send email: ' . $e->getMessage());
@@ -1929,14 +1934,14 @@ class NewContactDataController extends Controller
 
         }
 
-             HistoryExports::insert([
+           /*    HistoryExports::insert([
                 'contact_name' => $request->contact_name,
                 'contact_type' => $request->contact_type,
                 'applied_filters' => json_encode($request->applied_filters),
                 'export_to'=> $request->get('export_to','.xlsx'),
                 'amount_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
-            ]);   
+            ]);   */ 
 
             
 
