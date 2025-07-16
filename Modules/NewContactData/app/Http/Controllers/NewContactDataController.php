@@ -1853,7 +1853,7 @@ class NewContactDataController extends Controller
         
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
             $writer = new Xlsx($spreadsheet); 
-            //$writer->save($filename);
+            $writer->save($filename);
 
            $brevo_id = 0;
            $recipient = [];
@@ -1934,14 +1934,14 @@ class NewContactDataController extends Controller
 
         }
 
-           /*    HistoryExports::insert([
+             HistoryExports::insert([
                 'contact_name' => $request->contact_name,
                 'contact_type' => $request->contact_type,
                 'applied_filters' => json_encode($request->applied_filters),
                 'export_to'=> $request->get('export_to','.xlsx'),
                 'amount_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
-            ]);   */ 
+            ]);  
 
             
 
