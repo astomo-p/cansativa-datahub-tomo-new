@@ -16,6 +16,7 @@ use Modules\NewAnalytics\Models\UserComments;
 use Modules\NewContactData\Models\HistoryExports;
 use Modules\Users\Models\Users;
 use Modules\NewContactData\Models\SavedFilters;
+use Modules\NewContactData\Models\SharedContactLogs;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
@@ -1014,7 +1015,28 @@ class NewContactDataController extends Controller
        // Contacts::create($request_data);
        Contacts::insert($formatted_request_data);
 
-        return $this->successResponse($formatted_request_data,'Community data added successfully',200);
+        $inserted_id = Contacts::orderBy('id','desc')->take(count($formatted_request_data))->pluck('id');
+       $recorded = [];
+        foreach($inserted_id as $id){
+                $recorded[] = [
+            "type"=>"text",
+            "contact_flag" => "b2c",
+            "contact_id" => $id,
+            "creator_email" => $request->get('creator_email'),
+            "creator_name" => $request->get('creator_name'),
+            "description" => json_encode([
+                "title"=>"",
+                "from"=>"",
+                "template"=>"",
+                "filename"=> "",
+                "campaign_image"=>""
+            ])
+            ];
+        }
+
+       SharedContactLogs::insert($recorded);
+
+        return $this->successResponse(null,'Community data added successfully',200);
      }
 
      /**
@@ -1264,6 +1286,27 @@ class NewContactDataController extends Controller
         }
 
        Contacts::insert($formatted_request_data);
+
+       $inserted_id = Contacts::orderBy('id','desc')->take(count($formatted_request_data))->pluck('id');
+       $recorded = [];
+        foreach($inserted_id as $id){
+                $recorded[] = [
+            "type"=>"import",
+            "contact_flag" => "b2c",
+            "contact_id" => $id,
+            "creator_email" => $request->get('creator_email'),
+            "creator_name" => $request->get('creator_name'),
+            "description" => json_encode([
+                "title"=>"",
+                "from"=>"",
+                "template"=>"",
+                "filename"=> $request->get('imported_filename'),
+                "campaign_image"=>""
+            ])
+            ];
+        }
+
+       SharedContactLogs::insert($recorded);
 
         return $this->successResponse(null,'Pharmacy database data added successfully',200);
     }
@@ -2367,6 +2410,29 @@ class NewContactDataController extends Controller
         }
 
        Contacts::insert($imported_data);
+
+       $inserted_id = Contacts::orderBy('id','desc')->take(count($imported_data))->pluck('id');
+       $recorded = [];
+        foreach($inserted_id as $id){
+                $recorded[] = [
+            "type"=>"import",
+            "contact_flag" => "b2c",
+            "contact_id" => $id,
+            "creator_email" => $request->get('creator_email'),
+            "creator_name" => $request->get('creator_name'),
+            "description" => json_encode([
+                "title"=>"",
+                "from"=>"",
+                "template"=>"",
+                "filename"=> $request->get('imported_filename'),
+                "campaign_image"=>""
+            ])
+            ];
+        }
+
+       SharedContactLogs::insert($recorded);
+
+        
 
         return $this->successResponse(null,'successfully saved imported contact data',200);
 
