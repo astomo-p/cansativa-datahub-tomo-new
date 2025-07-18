@@ -1066,6 +1066,21 @@ class NewContactDataController extends Controller
             // Update the contact
            Contacts::where('id', $id)->update($formatted_request_data);
 
+           SharedContactLogs::insert([
+            "type"=>"text",
+            "contact_flag" => "b2c",
+            "contact_id" => $id,
+            "creator_email" => $request->get('creator_email'),
+            "creator_name" => $request->get('creator_name'),
+            "description" => json_encode([
+                "title"=>"",
+                "from"=>"",
+                "template"=>"",
+                "filename"=> "",
+                "campaign_image"=>""
+            ])
+            ]);
+
             return $this->successResponse(null,'Community data updated successfully',200);
         }
 
@@ -1110,6 +1125,21 @@ class NewContactDataController extends Controller
             // Soft delete the contact
             $result->is_deleted = true;
             $result->save();
+
+             SharedContactLogs::insert([
+            "type"=>"text",
+            "contact_flag" => "b2c",
+            "contact_id" => $id,
+            "creator_email" => $request->get('creator_email'),
+            "creator_name" => $request->get('creator_name'),
+            "description" => json_encode([
+                "title"=>"",
+                "from"=>"",
+                "template"=>"",
+                "filename"=> "",
+                "campaign_image"=>""
+            ])
+            ]);
 
             return $this->successResponse(null,'Community data deleted successfully',200);
         }
@@ -1300,7 +1330,7 @@ class NewContactDataController extends Controller
                 "title"=>"",
                 "from"=>"",
                 "template"=>"",
-                "filename"=> $request->get('imported_filename'),
+                "filename"=> "",
                 "campaign_image"=>""
             ])
             ];
