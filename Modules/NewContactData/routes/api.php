@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\NewContactData\Http\Controllers\NewContactDataController;
+use Modules\NewContactData\Http\Controllers\FileProcessorController;
 
 Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
@@ -64,9 +65,8 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::put('datahub/b2c/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "updatePharmacyDatabaseByParentIdAndId"]);
     Route::delete('datahub/b2c/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "deletePharmacyDatabaseByParentIdAndId"]);
     
-    
-    /* Route::post('datahub/b2c/contact/minio-upload', [NewContactDataController::class, "minioUpload"]);
-     */
+    Route::post('datahub/b2c/contact/document-upload', [FileProcessorController::class, "documentUpload"]);
+    //Route::post('datahub/b2c/contact/minio-upload', [NewContactDataController::class, "minioUpload"]);
     Route::get('woocommerce/customers',[NewContactDataController::class,'woocommerceCustomers']);  
 
 });

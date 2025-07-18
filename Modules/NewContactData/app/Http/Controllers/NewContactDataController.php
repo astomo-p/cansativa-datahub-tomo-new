@@ -1655,23 +1655,24 @@ class NewContactDataController extends Controller
     {
         // Validate the request
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048', // Adjust the validation rules as needed
+            'file_name' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048', // Adjust the validation rules as needed
         ]);
 
         // Get the file from the request
-        $file = $request->file('file');
+        $file = $request->file('file_name');
 
         // Define the path where you want to store the file
-        $path = 'uploads/contact-data/';
+        $path = '/b2c/contact/community';
 
         try {
             // Check if the file already exists
-           // Store the file in MinIO
-        //$file->storeAs('', $path, 'minio');
-        Storage::disk('minio')->put($path, file_get_contents($file));
+           // Store the file in MinIO 
+      // Storage::disk('minio')->put($path, file_get_contents($file));
+
+       $link = $file->store($path,'minio');
 
             // Return the path of the uploaded file
-        return $this->successResponse(['path' => $path], 'File uploaded successfully', 200);
+        return $this->successResponse(['link' => env('MINIO_URL') . '/' .$link], 'File uploaded successfully', 200);
         } catch (\Exception $e) {
             return $this->errorResponse('Error', 500, 'Failed to upload: ' . $e->getMessage());
         }
