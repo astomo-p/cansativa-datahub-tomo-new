@@ -1,0 +1,23 @@
+INSTALLATION
+======================
+$ composer update
+
+TEST RUNNING
+======================
+$ ./vendor/bin/php-cs-fixer fix --dry-run --diff
+
+CLI COMMANDS
+======================
+$ ./vendor/bin/php-cs-fixer fix Modules/NewContactData/app/Http/Controllers --dry-run --diff --format <output_format> --rules <rules> --verbose
+
+OUTPUT FORMAT
+=====================
+txt
+json
+xml
+
+CHECKING RULES
+====================
+@PSR2
+@Symfony
+...
