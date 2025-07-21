@@ -1,0 +1,23 @@
+INSTALLATION
+======================
+$ composer update
+
+TEST RUNNING
+======================
+$ ./vendor/bin/phpstan --help
+
+CLI COMMANDS
+======================
+$ ./vendor/bin/phpstan analyse --memory_limit 256M --level=<level> --no-progress --error-format=table > /path/to/file.txt -- Modules/NewContactData/app/Http/Controllers 
+
+OUTPUT FORMAT
+=====================
+table
+json
+raw
+prettyJson
+
+CHECKING RULES
+====================
+level 0 (loosest) to level max (strictest)
+custom rules can be added

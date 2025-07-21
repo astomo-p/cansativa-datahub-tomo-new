@@ -1,0 +1,435 @@
+ ------ ------------------------------------------------------------------------------------------------------ 
+  Line   NewContactDataController.php                                                                          
+ ------ ------------------------------------------------------------------------------------------------------ 
+  55     Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::where().            
+         🪪  staticMethod.notFound                                                                             
+  56     Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::where().            
+         🪪  staticMethod.notFound                                                                             
+  57     Call to an undefined static method Modules\NewContactData\Models\ContactTypes::where().               
+         🪪  staticMethod.notFound                                                                             
+  58     Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::where().            
+         🪪  staticMethod.notFound                                                                             
+  59     Call to an undefined static method Modules\NewContactData\Models\ContactTypes::where().               
+         🪪  staticMethod.notFound                                                                             
+  60     Call to an undefined static method Modules\NewContactData\Models\ContactTypes::where().               
+         🪪  staticMethod.notFound                                                                             
+  69     Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  94     Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  107    Method Modules\NewContactData\Http\Controllers\NewContactDataController::topFiveAreaPharmacies()      
+         should return Illuminate\Http\Response but returns Illuminate\Http\JsonResponse.                      
+         🪪  return.type                                                                                       
+  117    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  130    Method Modules\NewContactData\Http\Controllers\NewContactDataController::topFivePurchasePharmacies()  
+         should return Illuminate\Http\Response but returns Illuminate\Http\JsonResponse.                      
+         🪪  return.type                                                                                       
+  184    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  210    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  223    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  241    Method Modules\NewContactData\Http\Controllers\NewContactDataController::contactGrowth() should       
+         return Illuminate\Http\Response but returns Illuminate\Http\JsonResponse.                             
+         🪪  return.type                                                                                       
+  270    Access to an undefined property Illuminate\Http\Request::$type.                                       
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  275    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  279    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  291    Access to an undefined property Illuminate\Http\Request::$type.                                       
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  296    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  300    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  312    Access to an undefined property Illuminate\Http\Request::$type.                                       
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  316    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  320    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  333    Method Modules\NewContactData\Http\Controllers\NewContactDataController::topContactCard() should      
+         return Illuminate\Http\Response but returns Illuminate\Http\JsonResponse.                             
+         🪪  return.type                                                                                       
+  336    Method Modules\NewContactData\Http\Controllers\NewContactDataController::topContactCard() should      
+         return Illuminate\Http\Response but returns Illuminate\Http\JsonResponse.                             
+         🪪  return.type                                                                                       
+  348    Access to an undefined property Illuminate\Http\Request::$type.                                       
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  351    Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  355    Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  365    Access to an undefined property Illuminate\Http\Request::$type.                                       
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  368    Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  371    Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  381    Access to an undefined property Illuminate\Http\Request::$type.                                       
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  384    Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  387    Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  430    Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  442    Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  455    Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  480    Call to an undefined static method Modules\NewContactData\Models\B2BContacts::whereNotNull().         
+         🪪  staticMethod.notFound                                                                             
+  493    Call to an undefined static method Modules\NewContactData\Models\B2BContacts::where().                
+         🪪  staticMethod.notFound                                                                             
+  550    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  558    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  574    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  592    Method Modules\NewContactData\Http\Controllers\NewContactDataController::allPharmacyData() should     
+         return Illuminate\Http\Response but returns Illuminate\Http\JsonResponse.                             
+         🪪  return.type                                                                                       
+  602    Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  604    Method Modules\NewContactData\Http\Controllers\NewContactDataController::pharmacyDataById() should    
+         return Illuminate\Http\Response but returns Illuminate\Http\JsonResponse.                             
+         🪪  return.type                                                                                       
+  611    Method Modules\NewContactData\Http\Controllers\NewContactDataController::pharmacyDataById() should    
+         return Illuminate\Http\Response but returns Illuminate\Http\JsonResponse.                             
+         🪪  return.type                                                                                       
+  620    Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  627    Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  641    Call to an undefined static method Modules\NewContactData\Models\B2BContacts::insert().               
+         🪪  staticMethod.notFound                                                                             
+  652    Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  660    Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  686    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  693    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  708    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  739    Call to an undefined static method Modules\NewContactData\Models\B2BContacts::insert().               
+         🪪  staticMethod.notFound                                                                             
+  750    Call to an undefined static method Modules\NewContactData\Models\B2BContacts::find().                 
+         🪪  staticMethod.notFound                                                                             
+  757    Call to an undefined static method Modules\NewContactData\Models\B2BContacts::where().                
+         🪪  staticMethod.notFound                                                                             
+  767    Call to an undefined static method Modules\NewContactData\Models\B2BContacts::find().                 
+         🪪  staticMethod.notFound                                                                             
+  779    Call to an undefined static method Modules\NewContactData\Models\B2BContacts::find().                 
+         🪪  staticMethod.notFound                                                                             
+  808    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  815    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  830    Call to an undefined static method Modules\NewAnalytics\Models\UserSavedPosts::selectRaw().           
+         🪪  staticMethod.notFound                                                                             
+  838    Call to an undefined static method Modules\NewAnalytics\Models\UserComments::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  845    Call to an undefined static method Modules\NewAnalytics\Models\VisitorLikes::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  867    Call to an undefined static method Modules\NewAnalytics\Models\UserSavedPosts::selectRaw().           
+         🪪  staticMethod.notFound                                                                             
+  872    Call to an undefined static method Modules\NewAnalytics\Models\UserComments::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  876    Call to an undefined static method Modules\NewAnalytics\Models\VisitorLikes::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  889    Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  904    Call to an undefined static method Modules\NewAnalytics\Models\UserSavedPosts::selectRaw().           
+         🪪  staticMethod.notFound                                                                             
+  912    Call to an undefined static method Modules\NewAnalytics\Models\UserComments::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  919    Call to an undefined static method Modules\NewAnalytics\Models\VisitorLikes::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  943    Call to an undefined static method Modules\NewAnalytics\Models\UserSavedPosts::selectRaw().           
+         🪪  staticMethod.notFound                                                                             
+  948    Call to an undefined static method Modules\NewAnalytics\Models\UserComments::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  952    Call to an undefined static method Modules\NewAnalytics\Models\VisitorLikes::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  1016   Call to an undefined static method Modules\NewContactData\Models\Contacts::insert().                  
+         🪪  staticMethod.notFound                                                                             
+  1018   Call to an undefined static method Modules\NewContactData\Models\Contacts::orderBy().                 
+         🪪  staticMethod.notFound                                                                             
+  1037   Call to an undefined static method Modules\NewContactData\Models\SharedContactLogs::insert().         
+         🪪  staticMethod.notFound                                                                             
+  1048   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1067   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1069   Call to an undefined static method Modules\NewContactData\Models\SharedContactLogs::insert().         
+         🪪  staticMethod.notFound                                                                             
+  1093   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1120   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1129   Call to an undefined static method Modules\NewContactData\Models\SharedContactLogs::insert().         
+         🪪  staticMethod.notFound                                                                             
+  1133   Undefined variable: $request                                                                          
+         🪪  variable.undefined                                                                                
+  1134   Undefined variable: $request                                                                          
+         🪪  variable.undefined                                                                                
+  1156   Call to an undefined static method Modules\NewContactData\Models\Contacts::insert().                  
+         🪪  staticMethod.notFound                                                                             
+  1191   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1204   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1220   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1250   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1257   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1267   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1285   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1318   Call to an undefined static method Modules\NewContactData\Models\Contacts::insert().                  
+         🪪  staticMethod.notFound                                                                             
+  1320   Call to an undefined static method Modules\NewContactData\Models\Contacts::orderBy().                 
+         🪪  staticMethod.notFound                                                                             
+  1339   Call to an undefined static method Modules\NewContactData\Models\SharedContactLogs::insert().         
+         🪪  staticMethod.notFound                                                                             
+  1350   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1360   Offset 0 on non-empty-list<string> on left side of ?? always exists and is not nullable.              
+         🪪  nullCoalesce.offset                                                                               
+  1372   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1388   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1434   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1445   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1463   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1467   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1495   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1503   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1524   Call to an undefined static method Modules\NewContactData\Models\Contacts::insert().                  
+         🪪  staticMethod.notFound                                                                             
+  1544   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1551   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1554   Call to an undefined static method Modules\NewAnalytics\Models\UserSavedPosts::selectRaw().           
+         🪪  staticMethod.notFound                                                                             
+  1562   Call to an undefined static method Modules\NewAnalytics\Models\UserComments::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  1569   Call to an undefined static method Modules\NewAnalytics\Models\VisitorLikes::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  1589   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1592   Call to an undefined static method Modules\NewAnalytics\Models\UserSavedPosts::selectRaw().           
+         🪪  staticMethod.notFound                                                                             
+  1600   Call to an undefined static method Modules\NewAnalytics\Models\UserComments::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  1607   Call to an undefined static method Modules\NewAnalytics\Models\VisitorLikes::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  1637   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1644   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1655   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1668   Call to an undefined static method Modules\NewContactData\Models\Contacts::find().                    
+         🪪  staticMethod.notFound                                                                             
+  1732   Argument of an invalid type stdClass supplied for foreach, only iterables are supported.              
+         🪪  foreach.nonIterable                                                                               
+  1734   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1744   Access to an undefined property Modules\NewContactData\Models\Contacts::$contact_name.                
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1745   Access to an undefined property Modules\NewContactData\Models\Contacts::$contact_no.                  
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1746   Access to an undefined property Modules\NewContactData\Models\Contacts::$address.                     
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1747   Access to an undefined property Modules\NewContactData\Models\Contacts::$post_code.                   
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1748   Access to an undefined property Modules\NewContactData\Models\Contacts::$city.                        
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1749   Access to an undefined property Modules\NewContactData\Models\Contacts::$country.                     
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1750   Access to an undefined property Modules\NewContactData\Models\Contacts::$state.                       
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1751   Access to an undefined property Modules\NewContactData\Models\Contacts::$contact_person.              
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1752   Access to an undefined property Modules\NewContactData\Models\Contacts::$email.                       
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1753   Access to an undefined property Modules\NewContactData\Models\Contacts::$phone_no.                    
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1754   Access to an undefined property Modules\NewContactData\Models\Contacts::$amount_purchase.             
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1755   Access to an undefined property Modules\NewContactData\Models\Contacts::$total_purchase.              
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1756   Access to an undefined property Modules\NewContactData\Models\Contacts::$average_purchase.            
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1757   Access to an undefined property Modules\NewContactData\Models\Contacts::$last_purchase_date.          
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1758   Access to an undefined property Modules\NewContactData\Models\Contacts::$cansativa_newsletter.        
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1759   Access to an undefined property Modules\NewContactData\Models\Contacts::$community_user.              
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1760   Access to an undefined property Modules\NewContactData\Models\Contacts::$whatsapp_subscription.       
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1761   Access to an undefined property Modules\NewContactData\Models\Contacts::$contact_type_id.             
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1762   Access to an undefined property Modules\NewContactData\Models\Contacts::$contact_parent_id.           
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1763   Access to an undefined property Modules\NewContactData\Models\Contacts::$created_by.                  
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1764   Access to an undefined property Modules\NewContactData\Models\Contacts::$created_date.                
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1765   Access to an undefined property Modules\NewContactData\Models\Contacts::$updated_by.                  
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1766   Access to an undefined property Modules\NewContactData\Models\Contacts::$updated_date.                
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1769   Caught class Modules\NewContactData\Http\Controllers\Exceptions not found.                            
+         🪪  class.notFound                                                                                    
+         💡  Learn more at https://phpstan.org/user-guide/discovering-symbols                                  
+  1770   Call to an undefined static method Illuminate\Support\Facades\DB::rollback().                         
+         🪪  staticMethod.notFound                                                                             
+  1771   Access to property $message on an unknown class Modules\NewContactData\Http\Controllers\Exceptions.   
+         🪪  class.notFound                                                                                    
+         💡  Learn more at https://phpstan.org/user-guide/discovering-symbols                                  
+  1790   Access to an undefined property Illuminate\Http\Request::$contact_type.                               
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  1801   Call to an undefined static method Modules\NewContactData\Models\ContactTypes::find().                
+         🪪  staticMethod.notFound                                                                             
+  1804   Call to an undefined static method Modules\NewAnalytics\Models\UserSavedPosts::select().              
+         🪪  staticMethod.notFound                                                                             
+  1812   Call to an undefined static method Modules\NewAnalytics\Models\UserComments::select().                
+         🪪  staticMethod.notFound                                                                             
+  1819   Call to an undefined static method Modules\NewAnalytics\Models\VisitorLikes::select().                
+         🪪  staticMethod.notFound                                                                             
+  1842   Call to an undefined static method Modules\NewAnalytics\Models\UserSavedPosts::selectRaw().           
+         🪪  staticMethod.notFound                                                                             
+  1845   Call to an undefined static method Modules\NewAnalytics\Models\VisitorLikes::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  1847   Call to an undefined static method Modules\NewAnalytics\Models\UserComments::selectRaw().             
+         🪪  staticMethod.notFound                                                                             
+  1849   Call to an undefined static method Modules\NewContactData\Models\Contacts::selectRaw().               
+         🪪  staticMethod.notFound                                                                             
+  1851   Call to an undefined static method Modules\NewContactData\Models\Contacts::selectRaw().               
+         🪪  staticMethod.notFound                                                                             
+  1873   Loose comparison using == between 'community'|'pharmacy-db'|'subscriber' and 'general_newsletter'     
+         will always evaluate to false.                                                                        
+         🪪  equal.alwaysFalse                                                                                 
+  1937   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  1968   Caught class Modules\NewContactData\Http\Controllers\Exception not found.                             
+         🪪  class.notFound                                                                                    
+         💡  Learn more at https://phpstan.org/user-guide/discovering-symbols                                  
+  1969   Call to method getMessage() on an unknown class Modules\NewContactData\Http\Controllers\Exception.    
+         🪪  class.notFound                                                                                    
+         💡  Learn more at https://phpstan.org/user-guide/discovering-symbols                                  
+  1976   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  2004   Caught class Modules\NewContactData\Http\Controllers\Exception not found.                             
+         🪪  class.notFound                                                                                    
+         💡  Learn more at https://phpstan.org/user-guide/discovering-symbols                                  
+  2005   Call to method getMessage() on an unknown class Modules\NewContactData\Http\Controllers\Exception.    
+         🪪  class.notFound                                                                                    
+         💡  Learn more at https://phpstan.org/user-guide/discovering-symbols                                  
+  2011   Call to an undefined static method Modules\NewContactData\Models\HistoryExports::insert().            
+         🪪  staticMethod.notFound                                                                             
+  2012   Access to an undefined property Illuminate\Http\Request::$contact_name.                               
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  2013   Access to an undefined property Illuminate\Http\Request::$contact_type.                               
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  2014   Access to an undefined property Illuminate\Http\Request::$applied_filters.                            
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  2031   Access to an undefined property Illuminate\Http\Request::$contact_type.                               
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  2042   Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  2056   Call to an undefined static method Modules\NewContactData\Models\B2BContactTypes::find().             
+         🪪  staticMethod.notFound                                                                             
+  2147   Access to an undefined property Illuminate\Http\Request::$contact_type.                               
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  2160   Call to an undefined static method Modules\NewContactData\Models\B2BContacts::select().               
+         🪪  staticMethod.notFound                                                                             
+  2170   Variable $cache might not be defined.                                                                 
+         🪪  variable.undefined                                                                                
+  2219   Call to an undefined static method Modules\NewContactData\Models\SavedFilters::when().                
+         🪪  staticMethod.notFound                                                                             
+  2246   Call to an undefined static method Modules\NewContactData\Models\SavedFilters::insert().              
+         🪪  staticMethod.notFound                                                                             
+  2258   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  2264   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  2296   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  2300   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  2330   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  2350   Call to an undefined static method Modules\NewContactData\Models\Contacts::where().                   
+         🪪  staticMethod.notFound                                                                             
+  2371   Access to an undefined property Illuminate\Http\Request::$contact_type.                               
+         🪪  property.notFound                                                                                 
+         💡  Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property                 
+  2443   Call to an undefined static method Modules\NewContactData\Models\Contacts::insert().                  
+         🪪  staticMethod.notFound                                                                             
+  2445   Call to an undefined static method Modules\NewContactData\Models\Contacts::orderBy().                 
+         🪪  staticMethod.notFound                                                                             
+  2464   Call to an undefined static method Modules\NewContactData\Models\SharedContactLogs::insert().         
+         🪪  staticMethod.notFound                                                                             
+ ------ ------------------------------------------------------------------------------------------------------ 
+
+
+ [ERROR] Found 188 errors                                                                                      
+
