@@ -1,0 +1,25 @@
+INSTALLATION
+======================
+$ composer update
+
+TEST RUNNING
+======================
+$ sudo ./vendor/bin/phpmd
+
+CLI COMMANDS
+======================
+$ sudo ./vendor/bin/phpmd Modules/NewContactData/app/Http/Controllers <output_format> <checking_rule> --report-file path/target/for/result_file
+
+OUTPUT FORMAT
+=====================
+text
+json
+html
+...
+
+CHECKING RULES
+====================
+naming
+unusedcode
+...
+
