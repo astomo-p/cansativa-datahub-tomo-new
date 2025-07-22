@@ -16,6 +16,7 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('datahub/b2c/contact/pharmacy-database/scroll', [NewContactDataController::class, "pharmacyDatabaseScroll"]);
     Route::get('datahub/b2c/contact/community-data/user-stats', [NewContactDataController::class, "communityDataUserStats"]);
     Route::get('datahub/b2c/contact/pharmacy-database/user-stats', [NewContactDataController::class, "pharmacyDatabaseUserStats"]);
+    Route::get('datahub/b2c/export/contact-logs', [NewContactDataController::class, "exportContactLogs"]);
 });
 
 Route::prefix('v1')->name('api.')->group(function () {

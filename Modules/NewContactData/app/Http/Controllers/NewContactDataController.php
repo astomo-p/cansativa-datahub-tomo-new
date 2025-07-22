@@ -2111,6 +2111,63 @@ class NewContactDataController extends Controller
            
      }
 
+      public function exportContactLogs(Request $request)
+     {
+           
+           $count = SharedContactLogs::count();
+
+           $limit = 25;
+
+           $chunk_size = ceil($count / $limit);
+
+           $chunk = 0;
+
+           $spreadsheet = new Spreadsheet();
+
+           while($chunk < $chunk_size){
+                $data = SharedContactLogs::skip($chunk * $limit)
+                        ->take($limit)
+                        ->get();
+
+                $sheet = $chunk == 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
+                $sheet->setCellValue('A1', 'Log Type');
+                $sheet->setCellValue('B1', 'Contact Type');
+                $sheet->setCellValue('C1', 'Contact ID');
+                $sheet->setCellValue('D1', 'Campaign ID');
+                $sheet->setCellValue('E1', 'Creator Email');
+                $sheet->setCellValue('F1', 'Creator Name');
+                $sheet->setCellValue('G1', 'Description');
+                $sheet->setCellValue('H1', 'Created At');
+                $rows = 2;
+                foreach($data as $row){
+                $sheet->setCellValue('A' . $rows, $row['type']);
+                $sheet->setCellValue('B' . $rows, $row['contact_flag']);
+                $sheet->setCellValue('C' . $rows, $row['contact_id']);
+                $sheet->setCellValue('D' . $rows, $row['campaign_id']);
+                $sheet->setCellValue('E' . $rows, $row['creator_email']);
+                $sheet->setCellValue('F' . $rows, $row['creator_name']);
+                $sheet->setCellValue('G' . $rows, $row['description']);
+                $sheet->setCellValue('H' . $rows, date('d F Y',strtotime($row['created_date'])));
+                
+                $rows++;
+                }
+
+                $chunk++;
+
+           }
+
+        
+            $filename = date('YmdHis') . "-contact-logs.xlsx";
+            $writer = new Xlsx($spreadsheet); 
+            $writer->save($filename);
+
+           return $this->successResponse([
+                "filename"=>url('public/' . $filename)
+            ],'successfully exported file',200);
+
+           
+     }
+
      /**
       * xlsx import
       */
