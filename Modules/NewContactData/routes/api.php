@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\NewContactData\Http\Controllers\NewContactDataController;
 use Modules\NewContactData\Http\Controllers\FileProcessorController;
+use Modules\NewContactData\Http\Controllers\WoocommerceDataController;
 
 Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
@@ -17,6 +18,8 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('datahub/b2c/contact/community-data/user-stats', [NewContactDataController::class, "communityDataUserStats"]);
     Route::get('datahub/b2c/contact/pharmacy-database/user-stats', [NewContactDataController::class, "pharmacyDatabaseUserStats"]);
     Route::get('datahub/b2c/export/contact-logs', [NewContactDataController::class, "exportContactLogs"]);
+    Route::get('woocommerce/export', [WoocommerceDataController::class, "exportWoocommerceData"]);
+    Route::get('datahub/b2c/contact/sample-data', [NewContactDataController::class, "sampleData"]);
 });
 
 Route::prefix('v1')->name('api.')->group(function () {

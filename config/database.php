@@ -97,7 +97,7 @@ return [
             'sslmode' => 'prefer',
         ],
 
-        'pgsql_b2b_shared' => [
+        'a_pgsql_b2b_shared' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
@@ -112,7 +112,7 @@ return [
             'sslmode' => 'prefer',
         ],
 
-        'pgsql_b2b' => [
+        'a_pgsql_b2b' => [
             'driver' => 'pgsql',
             'url' => env('DB_B2B_URL'),
             'host' => env('DB_B2B_HOST', '127.0.0.1'),
@@ -124,6 +124,51 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            'sslmode' => 'prefer',
+        ],
+
+        'a_pgsql' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_URL_S'),
+            'host' => env('DB_HOST_S', '45.77.67.31'),
+            'port' => env('DB_PORT_S', '5432'),
+            'database' => env('DB_DATABASE_S', 'cansativa_b2c45'),
+            'username' => env('DB_USERNAME_S', 'postgres'),
+            'password' => env('DB_PASSWORD_S', 'PgSqlKemangDotSG'),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'b2c_schema',
+            'sslmode' => 'prefer',
+        ],
+
+        'pgsql_b2b_shared' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_URL'),
+            'host' => env('DB_HOST_S', '45.77.67.31'),
+            'port' => env('DB_PORT_S', '5432'),
+            'database' => env('DB_DATABASE_S', 'cansativa_b2b45'),
+            'username' => env('DB_USERNAME_S', 'postgres'),
+            'password' => env('DB_PASSWORD_S', 'PgSqlKemangDotSG'),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'shared_schema',
+            'sslmode' => 'prefer',
+        ],
+
+        'pgsql_b2b' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_B2B_URL_S'),
+            'host' => env('DB_HOST_S', '45.77.67.31'),
+            'port' => env('DB_PORT_S', '5432'),
+            'database' => env('DB_DATABASE_S', 'cansativa_b2b45'),
+            'username' => env('DB_USERNAME_S', 'postgres'),
+            'password' => env('DB_PASSWORD_S', 'PgSqlKemangDotSG'),
+            'charset' => env('DB_B2B_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'b2b_schema',
             'sslmode' => 'prefer',
         ],
 

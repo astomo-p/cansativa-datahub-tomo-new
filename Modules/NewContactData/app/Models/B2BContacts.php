@@ -23,7 +23,7 @@ class B2BContacts extends Model
     /**
      * The table associated with the model.
      */
-    protected $table = 'b2b_contacts';
+    protected $table = 'contacts';
 
      /** relation */
 

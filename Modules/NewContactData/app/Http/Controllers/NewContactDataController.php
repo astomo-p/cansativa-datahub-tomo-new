@@ -52,10 +52,10 @@ class NewContactDataController extends Controller
      */
     public function __construct()
     {
-        $this->contact_pharmacy = B2BContactTypes::where('contact_type_name', 'PHARMACY')->first();
-        $this->contact_supplier = B2BContactTypes::where('contact_type_name', 'SUPPLIER')->first();
+        //$this->contact_pharmacy = B2BContactTypes::where('contact_type_name', 'PHARMACY')->first();
+        //$this->contact_supplier = B2BContactTypes::where('contact_type_name', 'SUPPLIER')->first();
         $this->contact_community = ContactTypes::where('contact_type_name', 'COMMUNITY')->first();
-        $this->contact_general_newsletter = B2BContactTypes::where('contact_type_name', 'GENERAL NEWSLETTER')->first();
+        //$this->contact_general_newsletter = B2BContactTypes::where('contact_type_name', 'GENERAL NEWSLETTER')->first();
         $this->contact_pharmacy_db = ContactTypes::where('contact_type_name', 'PHARMACY DATABASE')->first();
         $this->contact_subscriber = ContactTypes::where('contact_type_name', 'SUBSCRIBER')->first();
     }
@@ -794,9 +794,25 @@ class NewContactDataController extends Controller
 
     public function allCommunityData(Request $request)
     {
+
+        //weird multi sort
+        //$multi_sort = false;
+        $sorts = [];
+        if($request->get('sort') == ''){
+           $sorts = [['contacts.id','asc']];
+        } else {
+            $cleaned_sorts = preg_replace(['/\[/','/\]/','/"/'],'', $request->get('sort'));
+            $sorts = array_map(function($sort){
+                $sorted = explode('_',$sort);
+                $sort_dir = array_slice($sorted,-1,1);
+                $sort_column = implode('_',array_slice($sorted,0,-1));
+                return ['contacts.' . $sort_column,$sort_dir[0]];
+            },explode(',',$cleaned_sorts));  
+        }
+
         // default pagination setup
-        $sort_column = $request->get('sort') == '' ? 'contacts.id' :  'contacts.' . explode('-',$request->get('sort'))[0];
-        $sort_direction = $request->get('sort') == '' ? 'asc' :  explode('-',$request->get('sort'))[1];;
+       // $sort_column = $request->get('sort') == '' ? 'contacts.id' :  'contacts.' . explode('-',$request->get('sort'))[0];
+       // $sort_direction = $request->get('sort') == '' ? 'asc' :  explode('-',$request->get('sort'))[1];;
         $start = $request->get('start', 0);
         $length = $request->get('length', 10);
         $search = $request->get('search');
@@ -858,8 +874,8 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
-            ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction)->select()
+            ->where('contacts.is_deleted', 'false')->select()
+            //->orderBy($sort_column, $sort_direction)->select()
             ->addSelect('created_date as account_creation')
             ->addSelect('created_date as last_login')
            // ->addSelect('cansativa_newsletter as email_subscription')
@@ -879,6 +895,10 @@ class NewContactDataController extends Controller
             
             $records_filtered = $results
             ->count();
+
+            foreach($sorts as $sort){
+               $results = $results->orderBy($sort[0],$sort[1]);
+            }
 
             $results = $results
             ->take($length)
@@ -933,7 +953,7 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
             ->where('contacts.is_deleted', 'false') 
-            ->orderBy($sort_column, $sort_direction)
+            //->orderBy($sort_column, $sort_direction)
             
             ->select()
             ->addSelect('created_date as account_creation')
@@ -956,6 +976,10 @@ class NewContactDataController extends Controller
             $records_filtered = $results
             ->count();
 
+            foreach($sorts as $sort){
+               $results = $results->orderBy($sort[0],$sort[1]);
+            }
+
             $results = $results 
             ->take($length)
             ->skip($start)
@@ -964,7 +988,7 @@ class NewContactDataController extends Controller
 
         $formatted_results = [];
 
-        foreach($results as $item){
+         foreach($results as $item){
             $check = isset($item->custom_fields);
             if($check){
                 $fields = json_decode($item->custom_fields, true);
@@ -977,12 +1001,12 @@ class NewContactDataController extends Controller
             }
 
             
-        }
+        }  
         
         $res = [
             'recordsTotal' => $records_total,
             'recordsFiltered' => $records_filtered,
-            'data' => $formatted_results
+            'data' => $formatted_results 
         ];
        
        return $this->successResponse($res,'All community data',200);
@@ -1356,9 +1380,24 @@ class NewContactDataController extends Controller
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
 
+        //weird multi sort
+        //$multi_sort = false;
+        $sorts = [];
+        if($request->get('sort') == ''){
+           $sorts = [['contacts.id','asc']];
+        } else {
+            $cleaned_sorts = preg_replace(['/\[/','/\]/','/"/'],'', $request->get('sort'));
+            $sorts = array_map(function($sort){
+                $sorted = explode('_',$sort);
+                $sort_dir = array_slice($sorted,-1,1);
+                $sort_column = implode('_',array_slice($sorted,0,-1));
+                return ['contacts.' . $sort_column,$sort_dir[0]];
+            },explode(',',$cleaned_sorts));  
+        }
+
         //default pagination setup
-        $sort_column = explode('-',$request->get('sort'))[0] ?? 'contacts.id';
-        $sort_direction = explode('-',$request->get('sort'))[1] ?? 'asc';
+       // $sort_column = explode('-',$request->get('sort'))[0] ?? 'contacts.id';
+       // $sort_direction = explode('-',$request->get('sort'))[1] ?? 'asc';
         $start = $request->get('start', 0);
         $length = $request->get('length', 10);
         $search = $request->get('search');
@@ -1376,10 +1415,15 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
-            ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction);
+            ->where('contacts.is_deleted', 'false');
+            //->orderBy($sort_column, $sort_direction);
             $records_filtered = $results
             ->count();
+
+            foreach($sorts as $sort){
+               $results = $results->orderBy($sort[0],$sort[1]);
+            }
+
             $results = $results 
             ->take($length)
             ->skip($start)
@@ -1387,10 +1431,15 @@ class NewContactDataController extends Controller
         } else {
             $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
-            ->where('contacts.is_deleted', 'false')
-            ->orderBy($sort_column, $sort_direction);
+            ->where('contacts.is_deleted', 'false');
+           // ->orderBy($sort_column, $sort_direction);
             $records_filtered = $results
             ->count();
+
+            foreach($sorts as $sort){
+               $results = $results->orderBy($sort[0],$sort[1]);
+            }
+
             $results = $results 
             ->take($length)
             ->skip($start)
@@ -1926,8 +1975,9 @@ class NewContactDataController extends Controller
 
         
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
+            $path = public_path($filename);
             $writer = new Xlsx($spreadsheet); 
-            $writer->save($filename);
+            $writer->save($path);
 
            $brevo_id = 0;
            $recipient = [];
@@ -1956,7 +2006,7 @@ class NewContactDataController extends Controller
                                  'index' => 0,
                                  'parameters' => [[
                                                 'type' => 'text',
-                                                'text' => 'public/' . $filename
+                                                'text' => $path
                                                  ]]
                                ]
                             ]
@@ -1988,7 +2038,7 @@ class NewContactDataController extends Controller
                     'name' => 'Cansativa',
                     'email' => env('BREVO_SENDER_EMAIL','siroja@kemang.sg'),
                 ],
-                'htmlContent' => "<html><body><h1>Please download your report</h1><p><a href='".url('public/' . $filename)."'>Here</a></p></body></html>",
+                'htmlContent' => "<html><body><h1>Please download your report</h1><p><a href='".url($path)."'>Here</a></p></body></html>",
                 'to' => [
                     [
                         'email' => $recipient[0]->email
@@ -2020,7 +2070,7 @@ class NewContactDataController extends Controller
             
 
            return $this->successResponse([
-                "filename"=>url('public/' . $filename)
+                "filename"=>url($path)
             ],'successfully exported file',200);
 
            
@@ -2158,11 +2208,135 @@ class NewContactDataController extends Controller
 
         
             $filename = date('YmdHis') . "-contact-logs.xlsx";
+            $path = public_path($filename);
             $writer = new Xlsx($spreadsheet); 
-            $writer->save($filename);
+            $writer->save($path);
 
            return $this->successResponse([
-                "filename"=>url('public/' . $filename)
+                "filename"=>url($path)
+            ],'successfully exported file',200);
+
+           
+     }
+
+     public function sampleData(Request $request)
+     {
+           /*  $contact = $request->contact_type;
+            $contact_type = [
+                'pharmacy'=>$this->contact_pharmacy->id,
+                'supplier'=>$this->contact_supplier->id,
+                'general_newsletter'=>$this->contact_general_newsletter->id
+            ];
+
+           if(!array_key_exists($contact,$contact_type)){
+                return $this->errorResponse('invalid contact_type',400);
+           } */
+
+           $contact_types_b2c = ContactTypes::all();
+           $contact_types_b2b = B2BContactTypes::all();
+
+           $spreadsheet = new Spreadsheet();
+
+           foreach($contact_types_b2c as $contact){
+
+            $data = ContactTypes::find($contact->id)
+                        ->contacts()
+                        ->get();
+
+                $sheet = $spreadsheet->createSheet();
+                $sheet->setTitle($contact->contact_type_name);
+                $sheet->setCellValue('A1', 'Pharmacy Name');
+                $sheet->setCellValue('B1', 'Pharmacy Number');
+                $sheet->setCellValue('C1', 'Address');
+                $sheet->setCellValue('D1', 'Postcode');
+                $sheet->setCellValue('E1', 'Country');
+                $sheet->setCellValue('F1', 'State');
+                $sheet->setCellValue('G1', 'Contact Person');
+                $sheet->setCellValue('H1', 'Email'); 
+                $sheet->setCellValue('I1', 'Phone Number');
+                $sheet->setCellValue('J1', 'Amount of Purchase');
+                $sheet->setCellValue('K1', 'Average of Purchase');
+                $sheet->setCellValue('L1', 'Total Purchase');
+                $sheet->setCellValue('M1', 'Last Purchase Date');
+                $sheet->setCellValue('N1', 'Created At');
+                $rows = 2;
+                foreach($data as $row){
+                $sheet->setCellValue('A' . $rows, $row['contact_name']);
+                $sheet->setCellValue('B' . $rows, $row['contact_no']);
+                $sheet->setCellValue('C' . $rows, $row['address']);
+                $sheet->setCellValue('D' . $rows, $row['postcode']);
+                $sheet->setCellValue('E' . $rows, $row['country']);
+                $sheet->setCellValue('F' . $rows, $row['state']);
+                $sheet->setCellValue('G' . $rows, $row['contact_person']);
+                $sheet->setCellValue('H' . $rows, $row['email']);
+                $sheet->setCellValue('I' . $rows, $row['phone_no']);
+                $sheet->setCellValue('J' . $rows, $row['amount_purchase']);
+                $sheet->setCellValue('K' . $rows, $row['average_purchase']);
+                $sheet->setCellValue('L' . $rows, $row['total_purchase']);
+                $sheet->setCellValue('M' . $rows, date('d F Y',strtotime($row['last_purchase_date'])));
+                $sheet->setCellValue('N' . $rows, date('d F Y',strtotime($row['created_date'])));
+                
+                $rows++;
+                }
+
+
+                }
+
+                foreach($contact_types_b2b as $contact){
+
+                $data = B2BContactTypes::find($contact->id)
+                            ->contacts()
+                            ->get();
+
+                $sheet = $spreadsheet->createSheet();
+                $sheet->setTitle($contact->contact_type_name);
+                $sheet->setCellValue('A1', 'Pharmacy Name');
+                $sheet->setCellValue('B1', 'Pharmacy Number');
+                $sheet->setCellValue('C1', 'Address');
+                $sheet->setCellValue('D1', 'Postcode');
+                $sheet->setCellValue('E1', 'Country');
+                $sheet->setCellValue('F1', 'State');
+                $sheet->setCellValue('G1', 'Contact Person');
+                $sheet->setCellValue('H1', 'Email'); 
+                $sheet->setCellValue('I1', 'Phone Number');
+                $sheet->setCellValue('J1', 'Amount of Purchase');
+                $sheet->setCellValue('K1', 'Average of Purchase');
+                $sheet->setCellValue('L1', 'Total Purchase');
+                $sheet->setCellValue('M1', 'Last Purchase Date');
+                $sheet->setCellValue('N1', 'Created At');
+                $rows = 2;
+                foreach($data as $row){
+                $sheet->setCellValue('A' . $rows, $row['contact_name']);
+                $sheet->setCellValue('B' . $rows, $row['contact_no']);
+                $sheet->setCellValue('C' . $rows, $row['address']);
+                $sheet->setCellValue('D' . $rows, $row['postcode']);
+                $sheet->setCellValue('E' . $rows, $row['country']);
+                $sheet->setCellValue('F' . $rows, $row['state']);
+                $sheet->setCellValue('G' . $rows, $row['contact_person']);
+                $sheet->setCellValue('H' . $rows, $row['email']);
+                $sheet->setCellValue('I' . $rows, $row['phone_no']);
+                $sheet->setCellValue('J' . $rows, $row['amount_purchase']);
+                $sheet->setCellValue('K' . $rows, $row['average_purchase']);
+                $sheet->setCellValue('L' . $rows, $row['total_purchase']);
+                $sheet->setCellValue('M' . $rows, date('d F Y',strtotime($row['last_purchase_date'])));
+                $sheet->setCellValue('N' . $rows, date('d F Y',strtotime($row['created_date'])));
+                
+                $rows++;
+                }
+
+
+                }
+
+           
+
+        
+            $filename = date('YmdHis') . "-datahub.xlsx";
+            $path = public_path($filename);
+            $writer = new Xlsx($spreadsheet); 
+            $writer->save($path);
+
+           return $this->successResponse([
+                "filename"=>url($path)
             ],'successfully exported file',200);
 
            
