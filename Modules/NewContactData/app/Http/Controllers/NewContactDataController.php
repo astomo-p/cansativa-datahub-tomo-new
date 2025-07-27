@@ -26,6 +26,9 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
+use Modules\B2BContact\Helpers\FilterHelper;
+use Illuminate\Database\Eloquent\Builder;
 
 class NewContactDataController extends Controller
 {
@@ -869,6 +872,12 @@ class NewContactDataController extends Controller
             ->when($request->get('subscribed_to_email'),function($query,$row){
                 $query->where('cansativa_newsletter',true);
             })
+            ->when($request->get('applied_filters'),function(Builder $query,$row){
+                 foreach ($row as $key => $filter) {
+                 $filtered = json_decode($filter, true);
+                 $query = FilterHelper::getFilterQuery($query, $filtered); 
+                }
+            })
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
@@ -947,6 +956,12 @@ class NewContactDataController extends Controller
             ->when($request->get('subscribed_to_email'),function($query,$row){
                 $query->where('cansativa_newsletter',true);
             })
+            ->when($request->get('applied_filters'),function(Builder $query,$row){
+                 foreach ($row as $key => $filter) {
+                 $filtered = json_decode($filter, true);
+                 $query = FilterHelper::getFilterQuery($query, $filtered); 
+                }
+            })
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
@@ -980,10 +995,18 @@ class NewContactDataController extends Controller
                $results = $results->orderBy($sort[0],$sort[1]);
             }
 
+            /* if($request->get('applied_filters')){
+                foreach ($request->get('applied_filters') as $key => $filter) {
+                    $filtered = json_decode($filter, true);
+                    $results = FilterHelper::getFilterQuery($results, $filtered);
+                    //dd($results->toSql());
+                }
+            } */
+
             $results = $results 
             ->take($length)
             ->skip($start)
-            ->get();  
+            ->get();   
         }
 
         $formatted_results = [];
@@ -1001,12 +1024,12 @@ class NewContactDataController extends Controller
             }
 
             
-        }  
+        }    
         
         $res = [
             'recordsTotal' => $records_total,
             'recordsFiltered' => $records_filtered,
-            'data' => $formatted_results 
+            'data' => $formatted_results  
         ];
        
        return $this->successResponse($res,'All community data',200);
@@ -1035,6 +1058,9 @@ class NewContactDataController extends Controller
             }
         }
 
+        $formatted_request_data['contact_type_id'] = $this->contact_community->id;
+        $formatted_request_data['created_by'] = 12;
+
         // Create the contact
        // Contacts::create($request_data);
        Contacts::insert($formatted_request_data);
@@ -1046,8 +1072,8 @@ class NewContactDataController extends Controller
             "type"=>"text",
             "contact_flag" => "b2c",
             "contact_id" => $id,
-            "creator_email" => $request->get('creator_email'),
-            "creator_name" => $request->get('creator_name'),
+            "creator_email" => $request->get('creator_email','admin@example.com'),
+            "creator_name" => $request->get('creator_name','admin'),
             "description" => json_encode([
                 "title"=>"",
                 "from"=>"",
@@ -1078,13 +1104,18 @@ class NewContactDataController extends Controller
             // Format the request data
             $formatted_request_data = [];
 
+            $blocked = ['likes','comments','submissions'];
+
             foreach($request_data as $key => $value){
                 /* if($key == 'email_subscription'){
                     $formatted_request_data['cansativa_newsletter'] = $value;
                 } else {
                     $formatted_request_data[$key] = $value;
-                } */
+                } */ if(in_array($key,$blocked)){} 
+            
+            else {
                $formatted_request_data[$key] = $value;
+              }
             }
 
             // Update the contact
@@ -1094,8 +1125,8 @@ class NewContactDataController extends Controller
             "type"=>"text",
             "contact_flag" => "b2c",
             "contact_id" => $id,
-            "creator_email" => $request->get('creator_email'),
-            "creator_name" => $request->get('creator_name'),
+            "creator_email" => $request->get('creator_email','admin@example.com'),
+            "creator_name" => $request->get('creator_name','admin'),
             "description" => json_encode([
                 "title"=>"",
                 "from"=>"",
@@ -1103,7 +1134,7 @@ class NewContactDataController extends Controller
                 "filename"=> "",
                 "campaign_image"=>""
             ])
-            ]);
+            ]);  
 
             return $this->successResponse(null,'Community data updated successfully',200);
         }
@@ -1114,8 +1145,10 @@ class NewContactDataController extends Controller
 
       public function communityDataById(Request $request,$id)
       {
-         $result = Contacts::find($id);
-        if(!$result){
+         $result = Contacts::find($id)
+         ->where('is_deleted', 'false')
+         ;
+        if(is_null($result)){
             return $this->errorResponse('Error',404, 'Community not found');
         }
 
@@ -1123,10 +1156,12 @@ class NewContactDataController extends Controller
 
         foreach($result->toArray() as $key => $value){
             if($key == 'custom_fields'){
+                if(!is_null($value)){
                 $json = json_decode($value, true);
                 foreach($json as $field_key => $field_value){
                     $formatted_results[$field_key] = $field_value;
                 }
+               }
             }
             else {
             $formatted_results[$key] = $value; 
@@ -1139,10 +1174,11 @@ class NewContactDataController extends Controller
       /**
        * delete community data by id
        */
-        public function deleteCommunityDataById($id)
+        public function deleteCommunityDataById(Request $request,$id)
         {
-            $result = Contacts::find($id);
-            if(!$result){
+            $result = Contacts::find($id)
+            ->where('is_deleted', 'false');
+            if(is_null($result)){
                 return $this->errorResponse('Error',404, 'Community not found');
             }
 
@@ -1154,8 +1190,8 @@ class NewContactDataController extends Controller
             "type"=>"text",
             "contact_flag" => "b2c",
             "contact_id" => $id,
-            "creator_email" => $request->get('creator_email'),
-            "creator_name" => $request->get('creator_name'),
+            "creator_email" => $request->get('creator_email','admin@example.com'),
+            "creator_name" => $request->get('creator_name','admin'),
             "description" => json_encode([
                 "title"=>"",
                 "from"=>"",
@@ -1321,6 +1357,12 @@ class NewContactDataController extends Controller
     {
         $request_data = json_decode($request->getContent(), true);
 
+        // validate contact_parent_id
+        Validator::make($request_data, [
+            'contact_parent_id' => 'required|integer'
+        ],$messages = ['contact_parent_id.required'=>'Contact parent ID is required. This ID comes from the B2B Pharmacy ID'])->validate();
+ 
+
         // Create the contact
        // Contacts::create($request_data);
 
@@ -1339,17 +1381,20 @@ class NewContactDataController extends Controller
             }
         }
 
+      $formatted_request_data['contact_type_id'] = $this->contact_pharmacy_db->id;
+      $formatted_request_data['created_by'] = 12;
+
        Contacts::insert($formatted_request_data);
 
        $inserted_id = Contacts::orderBy('id','desc')->take(count($formatted_request_data))->pluck('id');
        $recorded = [];
         foreach($inserted_id as $id){
                 $recorded[] = [
-            "type"=>"import",
+            "type"=>"text",
             "contact_flag" => "b2c",
             "contact_id" => $id,
-            "creator_email" => $request->get('creator_email'),
-            "creator_name" => $request->get('creator_name'),
+            "creator_email" => $request->get('creator_email','admin@example.com'),
+            "creator_name" => $request->get('creator_name','admin'),
             "description" => json_encode([
                 "title"=>"",
                 "from"=>"",
@@ -1415,6 +1460,12 @@ class NewContactDataController extends Controller
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
                       ->orWhere('contacts.email', 'like', '%'.$search.'%');
             })
+            ->when($request->get('applied_filters'),function(Builder $query,$row){
+                 foreach ($row as $key => $filter) {
+                 $filtered = json_decode($filter, true);
+                 $query = FilterHelper::getFilterQuery($query, $filtered); 
+                }
+            })
             ->where('contacts.is_deleted', 'false');
             //->orderBy($sort_column, $sort_direction);
             $records_filtered = $results
@@ -1431,6 +1482,12 @@ class NewContactDataController extends Controller
         } else {
             $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
             ->where('contact_parent_id', $parentId)
+            ->when($request->get('applied_filters'),function(Builder $query,$row){
+                 foreach ($row as $key => $filter) {
+                 $filtered = json_decode($filter, true);
+                 $query = FilterHelper::getFilterQuery($query, $filtered); 
+                }
+            })
             ->where('contacts.is_deleted', 'false');
            // ->orderBy($sort_column, $sort_direction);
             $records_filtered = $results
@@ -1509,7 +1566,9 @@ class NewContactDataController extends Controller
 
     public function pharmacyDatabaseByParentIdAndId(Request $request, $parentId, $id)
     {
-        $parent = Contacts::where('contact_parent_id', $parentId)->get();
+        $parent = Contacts::where('contact_parent_id', $parentId)
+        ->where('is_deleted', 'false')
+        ->get();
         if(!$parent){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
@@ -1520,10 +1579,12 @@ class NewContactDataController extends Controller
 
         foreach($result->toArray() as $key => $value){
             if($key == 'custom_fields'){
+               if(!is_null($value)){
                 $json = json_decode($value, true);
                 foreach($json as $field_key => $field_value){
                     $formatted_results[$field_key] = $field_value;
                 }
+               }
             }
             else {
             $formatted_results[$key] = $value; 
@@ -1539,9 +1600,11 @@ class NewContactDataController extends Controller
      * Delete pharmacy database by id
      */
 
-     public function deletePharmacyDatabaseByParentIdAndId($parentId, $id)
+     public function deletePharmacyDatabaseByParentIdAndId(Request $request,$parentId, $id)
      {
-        $parent = Contacts::where('contact_parent_id', $parentId)->get();
+        $parent = Contacts::where('contact_parent_id', $parentId)
+        ->where('is_deleted', 'false')
+        ->get();
         if(!$parent){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
@@ -1551,6 +1614,20 @@ class NewContactDataController extends Controller
             // Soft delete the contact
             Contacts::find($id)->update(['is_deleted' => true]);
             DB::commit();
+            SharedContactLogs::insert([
+            "type"=>"text",
+            "contact_flag" => "b2c",
+            "contact_id" => $id,
+            "creator_email" => $request->get('creator_email','admin@example.com'),
+            "creator_name" => $request->get('creator_name','admin'),
+            "description" => json_encode([
+                "title"=>"",
+                "from"=>"",
+                "template"=>"",
+                "filename"=> "",
+                "campaign_image"=>""
+            ])
+            ]); 
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error',500, 'Failed to delete pharmacy database: ' . $e->getMessage());
@@ -2680,8 +2757,8 @@ class NewContactDataController extends Controller
             "type"=>"import",
             "contact_flag" => "b2c",
             "contact_id" => $id,
-            "creator_email" => $request->get('creator_email'),
-            "creator_name" => $request->get('creator_name'),
+            "creator_email" => $request->get('creator_email','admin@example.com'),
+            "creator_name" => $request->get('creator_name','admin'),
             "description" => json_encode([
                 "title"=>"",
                 "from"=>"",
