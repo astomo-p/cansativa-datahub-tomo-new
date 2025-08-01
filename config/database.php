@@ -97,7 +97,7 @@ return [
             'sslmode' => 'prefer',
         ],
 
-        'a_pgsql_b2b_shared' => [
+        'pgsql_b2b_shared' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
@@ -142,9 +142,9 @@ return [
             'sslmode' => 'prefer',
         ],
 
-        'pgsql_b2b_shared' => [
+        'a_pgsql_b2b_shared' => [
             'driver' => 'pgsql',
-            'url' => env('DB_URL'),
+            'url' => env('DB_URL_S'),
             'host' => env('DB_HOST_S', '45.77.67.31'),
             'port' => env('DB_PORT_S', '5432'),
             'database' => env('DB_DATABASE_S', 'cansativa_b2b45'),
@@ -157,7 +157,7 @@ return [
             'sslmode' => 'prefer',
         ],
 
-        'pgsql_b2b' => [
+        'a_pgsql_b2b' => [
             'driver' => 'pgsql',
             'url' => env('DB_B2B_URL_S'),
             'host' => env('DB_HOST_S', '45.77.67.31'),

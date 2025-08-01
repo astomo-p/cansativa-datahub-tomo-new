@@ -39,4 +39,10 @@ return [
         'key' => env('BREVO_KEY'),
     ],
 
+    'bytescale' => [
+        'base_url' => env('BYTESCALE_BASE_URL','https://api.bytescale.com'),
+        'account_id' => env('BYTESACLE_ACCOUNT_ID','W23MTJ8'),
+        'api_key' => env('BYTESCALE_API_KEY','public_W23MTJ88Rxu7aGcsa4D76oZiTPTg')
+    ]
+
 ];

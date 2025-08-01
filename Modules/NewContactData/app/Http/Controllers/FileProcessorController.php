@@ -5,6 +5,11 @@ namespace Modules\NewContactData\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use GuzzleHttp\Psr7\Request as GuzzleRequest;
+use GuzzleHttp\Client;
+use Modules\NewContactData\Models\Files;
+use Modules\B2BContactAdjustment\Http\Controllers\B2BContactAdjustmentController;
 
 class FileProcessorController extends Controller
 {
@@ -24,23 +29,56 @@ class FileProcessorController extends Controller
             'upload.*' => 'required|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
         ]);
         // Define the path where you want to store the file
-        $path = '/b2c/contact/community';
+        $path = '';
         try {
 
             $files = $request->file('upload');
             $links = [];
             foreach ($files as $file) {
+                $request_body = new Request();
+                $request_body->files->set('file',$file);
+                $response = (new B2BContactAdjustmentController())->handleFileUpload($request_body);
+                $links[] = ($response->getData())->file_url;
+        
 
                 //$links[] = $file->getClientOriginalName();
-                  $links[] = $file->storePubliclyAs($path,date('YmdHis') . '-doc.' . $file->getClientOriginalExtension(),'minio');
+                //$links[] = $file->storePubliclyAs($path,date('YmdHis') . '-' . $request->contact_type .'-doc.' . $file->getClientOriginalExtension(),'minio');
+
+               /*   $response = Http::attach(
+                'file', $file, '-' . $request->contact_type .'-doc.' . $file->getClientOriginalExtension()
+                )->post(env('APP_URL').'/api/v1/datahub/minio-upload');
+                $links[] = (json_decode($response,true))['file_url']; 
+                */
+               /*  $client = new Client([
+                            // Base URI is used with relative requests
+                            'base_uri' => env('APP_URL'),
+                        ]);
+ 
+                $response = $client->request('POST', '/api/v1/datahub/minio-upload', [
+                    'multipart' => [
+                        [
+                            'name'     => 'file', // name value requires by endpoint
+                            'contents' => $file,
+                            'filename' => '-' . $request->contact_type .'-doc.' . $file->getClientOriginalExtension()
+                        ],
+                    ]
+                ]);
+
+                $links[] = (json_decode($response,true))['file_url']; */
+        
 
             }
 
             $link = [];
 
             foreach ($links as $link_file) {
-                $link[] = env('MINIO_URL') . '/' . $link_file;
+                $link[] = $link_file;
+                
             }
+            Files::insert([
+                    "contact_id"=>$request->contact_id,
+                    "file_name"=>json_encode($link)
+                ]);
 
             // Return the path of the uploaded file
         return $this->successResponse(['link' => $link], 'File uploaded successfully', 200);

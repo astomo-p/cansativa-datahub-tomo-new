@@ -1,0 +1,11 @@
+{
+    "name": "B2BContactAdjustment",
+    "alias": "b2bcontactadjustment",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\B2BContactAdjustment\\Providers\\B2BContactAdjustmentServiceProvider"
+    ],
+    "files": []
+}

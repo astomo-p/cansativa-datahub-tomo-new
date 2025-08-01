@@ -1,0 +1,11 @@
+{
+    "name": "B2BContact",
+    "alias": "b2bcontact",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\B2BContact\\Providers\\B2BContactServiceProvider"
+    ],
+    "files": []
+}

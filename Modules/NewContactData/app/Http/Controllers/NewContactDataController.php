@@ -29,6 +29,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Modules\B2BContact\Helpers\FilterHelper;
 use Illuminate\Database\Eloquent\Builder;
+use Modules\B2BContactAdjustment\Http\Controllers\B2BContactAdjustmentController;
+use Modules\NewContactData\Models\AccountKeyManagers;
 
 class NewContactDataController extends Controller
 {
@@ -961,6 +963,7 @@ class NewContactDataController extends Controller
                  $filtered = json_decode($filter, true);
                  $query = FilterHelper::getFilterQuery($query, $filtered); 
                 }
+                
             })
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
@@ -1006,25 +1009,37 @@ class NewContactDataController extends Controller
             $results = $results 
             ->take($length)
             ->skip($start)
-            ->get();   
+            ->get(); 
         }
 
         $formatted_results = [];
 
-         foreach($results as $item){
+        foreach($results as $item){
             $check = isset($item->custom_fields);
+            //$check_key_mgr = isset($item->account_key_manager_id);
             if($check){
                 $fields = json_decode($item->custom_fields, true);
                 foreach($fields as $key => $value){
                     $item->$key = $value;
                 }
                 $formatted_results[] = $item->except('custom_fields');
-            } else {
+            }  else {
                 $formatted_results[] = $item;
             }
 
+            if(!is_null($item->account_key_manager_id)){
+                $key_mgr_data = AccountKeyManagers::where('id',$item->account_key_manager_id)->get();
+                 foreach($key_mgr_data as $items){
+                     $item->{'key_manager_name'} = $items->manager_name;
+                     $item->{'key_manager_email'} = $items->email;
+                     $item->{'key_manager_phone'} = $items->phone;
+                     $item->{'key_manager_auto_reply'} = $items->auto_reply;
+                     $item->{'key_manager_message_template'} = $items->message_template_name;
+                } 
+                $formatted_results[] = $item->except('account_key_manager_id');
+            }
             
-        }    
+        } 
         
         $res = [
             'recordsTotal' => $records_total,
@@ -1052,7 +1067,17 @@ class NewContactDataController extends Controller
             /* if($key == 'email_subscription'){
                 $formatted_request_data['cansativa_newsletter'] = $value;
             } else */ if(in_array($key,$blocked)){} 
-            
+            else if($key == 'account_key_manager'){
+                $account_key_mgr_data = $value;
+                $account_key_mgr_id = AccountKeyManagers::insertGetId([
+                    "manager_name" => $account_key_mgr_data["key_manager_name"],
+                    "message_template_name" => $account_key_mgr_data["message_template_name"] ?? null,
+                    "auto_reply" => $account_key_mgr_data["auto_reply"],
+                    "email" => $account_key_mgr_data["email"],
+                    "phone" => $account_key_mgr_data["phone"]
+                ]);
+                $formatted_request_data['account_key_manager_id'] = $account_key_mgr_id;
+            }
             else {
                 $formatted_request_data[$key] = $value;
             }
@@ -1086,7 +1111,7 @@ class NewContactDataController extends Controller
 
        SharedContactLogs::insert($recorded);
 
-        return $this->successResponse(null,'Community data added successfully',200);
+        return $this->successResponse($formatted_request_data,'Community data added successfully',200);
      }
 
      /**
@@ -1145,8 +1170,8 @@ class NewContactDataController extends Controller
 
       public function communityDataById(Request $request,$id)
       {
-         $result = Contacts::find($id)
-         ->where('is_deleted', 'false')
+         $result = Contacts::where('is_deleted', 'false')
+         ->where('id', $id)
          ;
         if(is_null($result)){
             return $this->errorResponse('Error',404, 'Community not found');
@@ -1154,21 +1179,34 @@ class NewContactDataController extends Controller
 
         $formatted_results = []; 
 
-        foreach($result->toArray() as $key => $value){
-            if($key == 'custom_fields'){
-                if(!is_null($value)){
-                $json = json_decode($value, true);
-                foreach($json as $field_key => $field_value){
-                    $formatted_results[$field_key] = $field_value;
+         foreach($result->get() as $item){
+            $check = isset($item->custom_fields);
+            //$check_key_mgr = isset($item->account_key_manager_id);
+            if($check){
+                $fields = json_decode($item->custom_fields, true);
+                foreach($fields as $key => $value){
+                    $item->$key = $value;
                 }
-               }
+                $formatted_results[] = $item->except('custom_fields');
+            }  else {
+                $formatted_results[] = $item;
             }
-            else {
-            $formatted_results[$key] = $value; 
-            }
-        }          
 
-       return $this->successResponse([$formatted_results],'Community data by ID',200);
+            if(!is_null($item->account_key_manager_id)){
+                $key_mgr_data = AccountKeyManagers::where('id',$item->account_key_manager_id)->get();
+                 foreach($key_mgr_data as $items){
+                     $item->{'key_manager_name'} = $items->manager_name;
+                     $item->{'key_manager_email'} = $items->email;
+                     $item->{'key_manager_phone'} = $items->phone;
+                     $item->{'key_manager_auto_reply'} = $items->auto_reply;
+                     $item->{'key_manager_message_template'} = $items->message_template_name;
+                } 
+                $formatted_results[] = $item->except('account_key_manager_id');
+            }
+            
+        }         
+
+       return $this->successResponse($formatted_results,'Community data by ID',200);
       } 
 
       /**
@@ -1176,13 +1214,15 @@ class NewContactDataController extends Controller
        */
         public function deleteCommunityDataById(Request $request,$id)
         {
-            $result = Contacts::find($id)
-            ->where('is_deleted', 'false');
-            if(is_null($result)){
+            $result = Contacts::where('id',$id)
+            ->where('is_deleted', 'false')
+            ->count(); 
+            if($result == 0){
                 return $this->errorResponse('Error',404, 'Community not found');
             }
 
             // Soft delete the contact
+            $result = Contacts::find($id);
             $result->is_deleted = true;
             $result->save();
 
@@ -1375,7 +1415,17 @@ class NewContactDataController extends Controller
            /*  if($key == 'email_subscription'){
                 $formatted_request_data['cansativa_newsletter'] = $value;
             } else */ if(in_array($key,$blocked)){} 
-            
+            else if($key == 'account_key_manager'){
+                $account_key_mgr_data = $value;
+                $account_key_mgr_id = AccountKeyManagers::insertGetId([
+                    "manager_name" => $account_key_mgr_data["key_manager_name"],
+                    "message_template_name" => $account_key_mgr_data["message_template_name"] ?? null,
+                    "auto_reply" => $account_key_mgr_data["auto_reply"],
+                    "email" => $account_key_mgr_data["email"],
+                    "phone" => $account_key_mgr_data["phone"]
+                ]);
+                $formatted_request_data['account_key_manager_id'] = $account_key_mgr_id;
+            }
             else {
                 $formatted_request_data[$key] = $value;
             }
@@ -1517,6 +1567,17 @@ class NewContactDataController extends Controller
                 $formatted_results[] = $item;
             }
 
+            if(!is_null($item->account_key_manager_id)){
+                $key_mgr_data = AccountKeyManagers::where('id',$item->account_key_manager_id)->get();
+                 foreach($key_mgr_data as $items){
+                     $item->{'key_manager_name'} = $items->manager_name;
+                     $item->{'key_manager_email'} = $items->email;
+                     $item->{'key_manager_phone'} = $items->phone;
+                     $item->{'key_manager_auto_reply'} = $items->auto_reply;
+                     $item->{'key_manager_message_template'} = $items->message_template_name;
+                } 
+                $formatted_results[] = $item->except('account_key_manager_id');
+            }
             
         }
 
@@ -1585,6 +1646,15 @@ class NewContactDataController extends Controller
                     $formatted_results[$field_key] = $field_value;
                 }
                }
+            } else if($key == 'account_key_manager_id'){
+                $key_mgr_data = AccountKeyManagers::where('id',$value)->get();
+                 foreach($key_mgr_data as $items){
+                    $formatted_results['key_manager_name'] = $items->manager_name;
+                    $formatted_results['key_manager_email'] = $items->email;
+                    $formatted_results['key_manager_phone'] = $items->phone;
+                    $formatted_results['key_manager_auto_replay'] = $items->auto_reply;
+                    $formatted_results['key_manager_message_template'] = $items->message_template_name;
+                } 
             }
             else {
             $formatted_results[$key] = $value; 
@@ -1604,15 +1674,15 @@ class NewContactDataController extends Controller
      {
         $parent = Contacts::where('contact_parent_id', $parentId)
         ->where('is_deleted', 'false')
-        ->get();
-        if(!$parent){
+        ->count();
+        if($parent == 0){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
         
         DB::beginTransaction();
         try {
             // Soft delete the contact
-            Contacts::find($id)->update(['is_deleted' => true]);
+            Contacts::where('id',$id)->update(['is_deleted' => true]);
             DB::commit();
             SharedContactLogs::insert([
             "type"=>"text",
@@ -1633,7 +1703,7 @@ class NewContactDataController extends Controller
             return $this->errorResponse('Error',500, 'Failed to delete pharmacy database: ' . $e->getMessage());
         }
 
-        return $this->successResponse(null,'Pharmacy database data deleted successfully',200);
+        return $this->successResponse(['parent'=>$parentId,'id'=>$id],'Pharmacy database data deleted successfully',200);
      }
 
 
@@ -2425,13 +2495,18 @@ class NewContactDataController extends Controller
 
      public function importData(Request $request)
      {
-        $file = $request->file('contact_file');
+        $response = (new B2BContactAdjustmentController())->handleFileUpload($request);
+        $file_path = ($response->getData())->minio_path;
+        $file_source = Storage::disk('minio')->get($file_path);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'excel_');
+        file_put_contents($tempFile, $file_source);
         $reader = new XlsxReader();
-        $spreadsheet = $reader->load($file);
+        $spreadsheet = $reader->load($tempFile);
         $worksheet = $spreadsheet->getActiveSheet()->toArray();
         $results = [];
-        $first_row = $worksheet[0];
-        $count = 1; 
+        $first_row = $worksheet[0];  
+        $count = 1;  
         
         while($count < count($worksheet)){
             $row = $worksheet[$count];
@@ -2491,10 +2566,10 @@ class NewContactDataController extends Controller
                $data['community_user'] = $result['community_user'] == 'yes' ? true : false;
             }
             array_push($inserted,$data);
-        }
+        } 
 
         //Contacts::insert($inserted);
-
+       
         return $this->successResponse($inserted,'successfully read uploaded contact data',200);
      } 
 
@@ -2536,7 +2611,8 @@ class NewContactDataController extends Controller
             $final_results[] = [
                 "id"=>$row['id'],
                 "filter_name"=>$row['filter_name'],
-                "applied_filters"=>json_decode($row['applied_filters'])
+                "applied_filters"=>json_decode($row['applied_filters']),
+                "contact_type_name"=>ContactTypes::where('id',$row['contact_type_id'])->pluck('contact_type_name')->first(),
             ];
         }
 
@@ -2556,6 +2632,62 @@ class NewContactDataController extends Controller
         return $this->successResponse([],'successfully add saved filters data',200);
 
     }
+
+    /**
+     * Delete saved filter data by id
+     */
+    public function deleteSavedFilterById(Request $request,$id)
+    {
+        $saved_filter = SavedFilters::find($id)->where('is_deleted','false');
+        if(is_null($saved_filter)){
+            return $this->errorResponse('Error',404,'saved filter data is not found');
+        }
+
+         // Soft delete the contact
+            $saved_filter->is_deleted = true;
+            $saved_filter->save();
+
+             SharedContactLogs::insert([
+            "type"=>"text",
+            "contact_flag" => "b2c",
+            "contact_id" => $id,
+            "creator_email" => $request->get('creator_email','admin@example.com'),
+            "creator_name" => $request->get('creator_name','admin'),
+            "description" => json_encode([
+                "title"=>"",
+                "from"=>"",
+                "template"=>"",
+                "filename"=> "",
+                "campaign_image"=>""
+            ])
+            ]);
+
+            return $this->successResponse(null,'Community data deleted successfully',200);
+
+
+    }
+
+    /**
+     * Update saved filters by ID
+     */
+
+    public function updateSavedFiltersById(Request $request)
+    {
+        $saved_filter = SavedFilters::find($id)->where('is_deleted','false');
+        if(is_null($saved_filter)){
+            return $this->errorResponse('Error',404,'saved filter data is not found');
+        }
+
+         $request_data = json_decode($request->getContent(), true);
+
+        // Update saved filter
+       SavedFilters::where('id', $id)->update($request_data);
+
+        return $this->successResponse(null,'Saved Filter data updated successfully',200);
+    
+        
+    }
+
 
     /**
      * Get community data with scroll

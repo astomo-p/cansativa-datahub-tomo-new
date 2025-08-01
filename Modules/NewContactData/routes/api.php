@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\NewContactData\Http\Controllers\NewContactDataController;
 use Modules\NewContactData\Http\Controllers\FileProcessorController;
 use Modules\NewContactData\Http\Controllers\WoocommerceDataController;
+use Modules\NewContactData\Http\Controllers\ContactGeoController;
 
 Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
@@ -20,6 +21,13 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('datahub/b2c/export/contact-logs', [NewContactDataController::class, "exportContactLogs"]);
     Route::get('woocommerce/export', [WoocommerceDataController::class, "exportWoocommerceData"]);
     Route::get('datahub/b2c/contact/sample-data', [NewContactDataController::class, "sampleData"]);
+    Route::delete('datahub/b2c/contact/saved-filters/id/{id}', [NewContactDataController::class, "deleteSavedFilterById"]);
+    Route::put('datahub/b2c/contact/saved-filters/id/{id}', [NewContactDataController::class, "updateSavedFilterById"]);
+    Route::get('datahub/b2c/contact/countries',[ContactGeoController::class,'getCountries']);
+    Route::get('datahub/b2c/contact/country/{country}/cities',[ContactGeoController::class,'getCitiesByCountry']);
+    Route::get('datahub/b2c/contact/country/{country}/city/{city}/postcodes',[ContactGeoController::class,'getPostcodesByCityAndCountry']);
+    
+    
 });
 
 Route::prefix('v1')->name('api.')->group(function () {

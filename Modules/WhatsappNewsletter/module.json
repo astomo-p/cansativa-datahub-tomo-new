@@ -1,0 +1,12 @@
+{
+    "name": "WhatsappNewsletter",
+    "alias": "whatsappnewsletter",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\WhatsappNewsletter\\Providers\\WhatsappNewsletterServiceProvider",
+        "Modules\\WhatsappNewsletter\\Providers\\FilterServiceProvider"
+    ],
+    "files": []
+}
