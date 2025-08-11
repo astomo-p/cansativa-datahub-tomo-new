@@ -1,0 +1,11 @@
+{
+    "name": "CustomAnalytics",
+    "alias": "customanalytics",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\CustomAnalytics\\Providers\\CustomAnalyticsServiceProvider"
+    ],
+    "files": []
+}

@@ -2,5 +2,12 @@
     "Analytics": true,
     "ContactData": true,
     "NewAnalytics": true,
-    "NewContactData": true
+    "NewContactData": true,
+    "B2BContact": true,
+    "B2BContactAdjustment": true,
+    "AuditLog": true,
+    "Whatsapp": true,
+    "Campaign": true,
+    "WhatsappNewsletter": true,
+    "CustomAnalytics": true
 }

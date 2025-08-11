@@ -30,7 +30,8 @@ use Illuminate\Support\Facades\Validator;
 use Modules\B2BContact\Helpers\FilterHelper;
 use Illuminate\Database\Eloquent\Builder;
 use Modules\B2BContactAdjustment\Http\Controllers\B2BContactAdjustmentController;
-use Modules\NewContactData\Models\AccountKeyManagers;
+use Modules\NewContactData\Models\AccountKeyManagers; 
+use Illuminate\Http\UploadedFile;
 
 class NewContactDataController extends Controller
 {
@@ -876,7 +877,7 @@ class NewContactDataController extends Controller
             })
             ->when($request->get('applied_filters'),function(Builder $query,$row){
                  foreach ($row as $key => $filter) {
-                 $filtered = json_decode($filter, true);
+                 $filtered = is_array($filter) ? $filter : json_decode($filter, true);
                  $query = FilterHelper::getFilterQuery($query, $filtered); 
                 }
             })
@@ -960,7 +961,7 @@ class NewContactDataController extends Controller
             })
             ->when($request->get('applied_filters'),function(Builder $query,$row){
                  foreach ($row as $key => $filter) {
-                 $filtered = json_decode($filter, true);
+                 $filtered = is_array($filter) ? $filter : json_decode($filter, true);
                  $query = FilterHelper::getFilterQuery($query, $filtered); 
                 }
                 
@@ -1512,7 +1513,7 @@ class NewContactDataController extends Controller
             })
             ->when($request->get('applied_filters'),function(Builder $query,$row){
                  foreach ($row as $key => $filter) {
-                 $filtered = json_decode($filter, true);
+                 $filtered = is_array($filter) ? $filter : json_decode($filter, true);
                  $query = FilterHelper::getFilterQuery($query, $filtered); 
                 }
             })
@@ -1534,7 +1535,7 @@ class NewContactDataController extends Controller
             ->where('contact_parent_id', $parentId)
             ->when($request->get('applied_filters'),function(Builder $query,$row){
                  foreach ($row as $key => $filter) {
-                 $filtered = json_decode($filter, true);
+                 $filtered = is_array($filter) ? $filter : json_decode($filter, true);
                  $query = FilterHelper::getFilterQuery($query, $filtered); 
                 }
             })
@@ -1628,9 +1629,10 @@ class NewContactDataController extends Controller
     public function pharmacyDatabaseByParentIdAndId(Request $request, $parentId, $id)
     {
         $parent = Contacts::where('contact_parent_id', $parentId)
+        ->where('id',$id)
         ->where('is_deleted', 'false')
-        ->get();
-        if(!$parent){
+        ->count();
+        if($parent == 0){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
         $result = Contacts::where('id', $id)
@@ -1673,6 +1675,7 @@ class NewContactDataController extends Controller
      public function deletePharmacyDatabaseByParentIdAndId(Request $request,$parentId, $id)
      {
         $parent = Contacts::where('contact_parent_id', $parentId)
+        ->where('id',$id)
         ->where('is_deleted', 'false')
         ->count();
         if($parent == 0){
@@ -1983,11 +1986,11 @@ class NewContactDataController extends Controller
 
      public function exportData(Request $request)
      {
-            $contact = $request->contact_type;
+            $contact = $request->contact_type; 
             $contact_type = [
                 'community'=>$this->contact_community->id,
                 'subscriber'=>$this->contact_subscriber->id,
-                'pharmacy-db'=>$this->contact_pharmacy_db->id
+                'pharmacy-database'=>$this->contact_pharmacy_db->id
             ];
 
            if(!array_key_exists($contact,$contact_type)){
@@ -1996,7 +1999,19 @@ class NewContactDataController extends Controller
 
            $results = ContactTypes::find($contact_type[$contact])
            ->contacts()
-           ->when($request->input('applied_filters.amount_likes'),function($query,$filter){
+           ->when($request->get('parent_id'),function ($query,$parent_id){
+                $query->where("contacts.contact_parent_id",$parent_id);
+           })
+           ->when($request->get('applied_filters'),function(Builder $query,$row){
+                 foreach ($row as $key => $filter) {
+                 $filtered = is_array($filter) ? $filter : json_decode($filter, true);
+                 $query = FilterHelper::getFilterQuery($query, $filtered); 
+                }
+            }) 
+
+
+/* 
+            ->when($request->input('applied_filters.amount_likes'),function($query,$filter){
                 $amount_likes_id = UserSavedPosts::select('user_id')
                                 ->where('is_like',true)
                                 ->groupBy('user_id')
@@ -2032,7 +2047,7 @@ class NewContactDataController extends Controller
          })
          ->when($request->input('applied_filters.city',''),function($query,$filter){
                 $query->where('contacts.city', 'like', '%' . $filter . '%');
-         })
+         }) */
 
            ->addSelect([
                             'total_likes'=>UserSavedPosts::selectRaw('COUNT(user_saved_posts.is_like) AS total_likes')
@@ -2122,9 +2137,22 @@ class NewContactDataController extends Controller
 
         
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
-            $path = public_path($filename);
+            $path = sys_get_temp_dir() . "/" . $filename;
             $writer = new Xlsx($spreadsheet); 
             $writer->save($path);
+
+            $filed = new UploadedFile(
+                        $path, // Path to the file
+                        $filename, // Original file name
+                        null, // MIME type (optional, null will auto-detect)
+                        null, // File size (optional, null will auto-detect)
+                        true // Test mode (true for temporary files)
+                    );
+
+            $request_body = new Request();
+            $request_body->files->set('file',$filed);
+            $response = (new B2BContactAdjustmentController())->handleFileUpload($request_body);
+            $links = ($response->getData())->file_url;
 
            $brevo_id = 0;
            $recipient = [];
@@ -2153,7 +2181,7 @@ class NewContactDataController extends Controller
                                  'index' => 0,
                                  'parameters' => [[
                                                 'type' => 'text',
-                                                'text' => $path
+                                                'text' => $links
                                                  ]]
                                ]
                             ]
@@ -2185,7 +2213,7 @@ class NewContactDataController extends Controller
                     'name' => 'Cansativa',
                     'email' => env('BREVO_SENDER_EMAIL','siroja@kemang.sg'),
                 ],
-                'htmlContent' => "<html><body><h1>Please download your report</h1><p><a href='".url($path)."'>Here</a></p></body></html>",
+                'htmlContent' => "<html><body><h1>Please download your report</h1><p><a href='".$links."'>Here</a></p></body></html>",
                 'to' => [
                     [
                         'email' => $recipient[0]->email
@@ -2208,7 +2236,7 @@ class NewContactDataController extends Controller
              HistoryExports::insert([
                 'contact_name' => $request->contact_name,
                 'contact_type' => $request->contact_type,
-                'applied_filters' => json_encode($request->applied_filters),
+                'applied_filters' => ($request->get("applied_filters")) == "" ? null : json_encode($request->applied_filters),
                 'export_to'=> $request->get('export_to','.xlsx'),
                 'amount_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
@@ -2217,7 +2245,7 @@ class NewContactDataController extends Controller
             
 
            return $this->successResponse([
-                "filename"=>url($path)
+                "filename"=>$links
             ],'successfully exported file',200);
 
            
@@ -2478,12 +2506,28 @@ class NewContactDataController extends Controller
 
         
             $filename = date('YmdHis') . "-datahub.xlsx";
-            $path = public_path($filename);
+            $path = sys_get_temp_dir() . "/" . $filename;
+           // $path = public_path($filename);
             $writer = new Xlsx($spreadsheet); 
             $writer->save($path);
 
+            //$filed = Storage::disk('local')->get($path);
+
+            $filed = new UploadedFile(
+                        $path, // Path to the file
+                        $filename, // Original file name
+                        null, // MIME type (optional, null will auto-detect)
+                        null, // File size (optional, null will auto-detect)
+                        true // Test mode (true for temporary files)
+                    );
+
+            $request_body = new Request();
+            $request_body->files->set('file',$filed);
+            $response = (new B2BContactAdjustmentController())->handleFileUpload($request_body);
+            $links = ($response->getData())->file_url;
+
            return $this->successResponse([
-                "filename"=>url($path)
+                "filename"=>$links
             ],'successfully exported file',200);
 
            
@@ -2590,6 +2634,45 @@ class NewContactDataController extends Controller
      public function historyExports(Request $request)
      {
         $results = HistoryExports::all();
+         return $this->successResponse($results,'successfully retrieved all history exports data',200);
+     }
+
+     /**
+      * Add history export data
+      */
+     public function historyExportsAdd(Request $request)
+     {
+        $history = HistoryExports::where('name', $data['name'])->first();
+        if ($history) {
+            return $this->errorResponse('Error', 400, 'Failed to create new export. Name already taken.');
+        }
+
+        if ($request->has('applied_filters')) {
+            $data['applied_filters'] = json_encode($data['applied_filters']);
+        }
+        if ($request->has('newsletter_channel')) {
+            $data['newsletter_channel'] = json_encode($data['newsletter_channel']);
+        }
+        if ($request->has('frequency_cap')) {
+            $data['frequency_cap'] = json_encode($data['frequency_cap']);
+        }
+
+        $result = HistoryExports::insert($data);
+
+        if (!$result) {
+            return $this->errorResponse('Error', 400, 'Failed to create new export');
+        }
+        
+        return $this->successResponse($result, 'New export created', 200);
+     }
+
+     /**
+      * Get all history exports data
+      */
+
+     public function historyExportsById(Request $request,$id)
+     {
+        $results = HistoryExports::where('id',$id)->get();
          return $this->successResponse($results,'successfully retrieved all history exports data',200);
      }
     
@@ -2907,6 +2990,55 @@ class NewContactDataController extends Controller
 
         return $this->successResponse(null,'successfully saved imported contact data',200);
 
+    }
+
+    /**
+     * Update contact subscription from login
+     */
+    public function updateContactSubscriptionFromLogin(Request $request)
+    {
+        $data = json_decode($request->getContent(),true);
+
+        if($request->get("email") != "" && $request->get("phone") != ""){
+            $check = Contacts::where('phone_no',$request->get("phone"))
+            ->where('email',$request->get("email"))
+            ->count();
+            if($check == 0) {
+                return $this->errorResponse('contact not found',404);
+            }  
+            Contacts::where('email',$request->get("email"))
+            ->where('phone_no',$request->get("phone"))
+            ->update(
+                [
+                    "temporary_email_subscription"=>$data["temp_email_subs"],
+                    "temporary_whatsapp_subscription"=>$data["temp_wa_subs"]
+                ]);
+        } 
+        else if($request->get("email") != ""){
+            $check = Contacts::where('email',$request->get("email")) 
+            ->count();
+            if($check == 0) {
+                return $this->errorResponse('contact not found',404);
+            }
+            Contacts::where('email',$request->get("email"))->update(
+                [
+                    "temporary_email_subscription"=>$data["temp_email_subs"],
+                    "temporary_whatsapp_subscription"=>$data["temp_wa_subs"]
+                ]);
+        } else if($request->get("phone") != ""){
+            $check = Contacts::where('phone_no',$request->get("phone"))
+            ->count();
+            if($check == 0) {
+                return $this->errorResponse('contact not found',404);
+            }
+            Contacts::where('phone_no',$request->get("phone"))->update(
+                [
+                    "temporary_email_subscription"=>$data["temp_email_subs"],
+                    "temporary_whatsapp_subscription"=>$data["temp_wa_subs"]
+                ]);
+        }
+        
+        return $this->successResponse(null,'successfully saved imported contact data',200);
     }
 
 

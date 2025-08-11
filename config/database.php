@@ -97,7 +97,7 @@ return [
             'sslmode' => 'prefer',
         ],
 
-        'pgsql_b2b_shared' => [
+        'a_pgsql_b2b_shared' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
@@ -112,7 +112,7 @@ return [
             'sslmode' => 'prefer',
         ],
 
-        'a_pgsql_b2b' => [
+        'pgsql_b2b' => [
             'driver' => 'pgsql',
             'url' => env('DB_B2B_URL'),
             'host' => env('DB_B2B_HOST', '127.0.0.1'),

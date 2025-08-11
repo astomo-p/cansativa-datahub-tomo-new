@@ -5,15 +5,34 @@ use Modules\NewContactData\Http\Controllers\NewContactDataController;
 use Modules\NewContactData\Http\Controllers\FileProcessorController;
 use Modules\NewContactData\Http\Controllers\WoocommerceDataController;
 use Modules\NewContactData\Http\Controllers\ContactGeoController;
+use Modules\NewContactData\Http\Controllers\SavedFilterController;
+use Modules\NewContactData\Http\Controllers\HistoryExportController;
 
 Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
     Route::post('datahub/b2c/import', [NewContactDataController::class, "importData"]);
     Route::post('datahub/b2c/import/save', [NewContactDataController::class, "importSave"]);
     Route::get('datahub/b2c/contact/contact-types-data/all', [NewContactDataController::class, "contactTypesData"]);
-    Route::get('datahub/b2c/contact/history-exports', [NewContactDataController::class, "historyExports"]);
-    Route::get('datahub/b2c/contact/saved-filters', [NewContactDataController::class, "savedFilters"]);
-    Route::post('datahub/b2c/contact/saved-filters/add', [NewContactDataController::class, "savedFiltersAdd"]);
+    //Route::get('datahub/b2c/contact/history-exports', [NewContactDataController::class, "historyExports"]);
+    //Route::get('datahub/b2c/contact/history-exports/add', [NewContactDataController::class, "historyExportsAdd"]);
+    //Route::get('datahub/b2c/contact/history-exports/id/{id}', [NewContactDataController::class, "historyExportsById"]);
+    Route::post('datahub/b2c/contact/history-exports/add', [HistoryExportController::class, "addHistoryExport"]);
+    Route::put('datahub/b2c/contact/history-exports/id/{id}', [HistoryExportController::class, "updateHistoryExport"]);
+    Route::get('datahub/b2c/contact/history-exports/all', [HistoryExportController::class, "getAllHistoryExports"]);
+    Route::get('datahub/b2c/contact/history-exports/id/{id}', [HistoryExportController::class, "historyExportDataById"]);
+//Route::get('datahub/b2c/contact/saved-filters', [NewContactDataController::class, "savedFilters"]);
+    //Route::post('datahub/b2c/contact/saved-filters/add', [NewContactDataController::class, "savedFiltersAdd"]);
+    Route::get('datahub/b2c/contact/saved-filter-dropdown', [SavedFilterController::class, "getAllFilter"]);
+    Route::get('datahub/b2c/contact/filter/all', [SavedFilterController::class, "getFilterTableList"]);
+    Route::get('datahub/b2c/contact/filter/id/{id}', [SavedFilterController::class, "getFilterDetail"]);
+    Route::post('datahub/b2c/contact/filter/add', [SavedFilterController::class, "saveNewFilter"]);
+    Route::put('datahub/b2c/contact/filter/id/{id}', [SavedFilterController::class, "updateFilter"]);
+    Route::delete('datahub/b2c/contact/filter/id/{id}', [SavedFilterController::class, "deleteFilter"]);
+
+    
+    
+    
+    Route::put('datahub/b2c/contact/temporary-subscription', [NewContactDataController::class, "updateContactSubscriptionFromLogin"]);
     Route::get('datahub/b2c/contact/community-data/scroll', [NewContactDataController::class, "communityDataScroll"]);
     Route::get('datahub/b2c/contact/pharmacy-database/scroll', [NewContactDataController::class, "pharmacyDatabaseScroll"]);
     Route::get('datahub/b2c/contact/community-data/user-stats', [NewContactDataController::class, "communityDataUserStats"]);
