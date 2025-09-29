@@ -11,6 +11,7 @@ Route::prefix('v1')->name('api.')->group(function () {
 
 Route::middleware([ValidateSignature::class])->prefix('v1')->name('api.')->group(function () {
     Route::get('/analytics/analytics-monthly-visitor', [NewAnalyticsController::class,"analyticsMonthlyVisitor"])->name('analytics.monthly.visitor');
+    Route::get('/analytics/analytics-monthly-new-user', [NewAnalyticsController::class,"analyticsMonthlyNewUser"]);
     Route::get('/analytics/analytics-bounce-rate', [NewAnalyticsController::class,"analyticsBounceRate"]);
     Route::get('/analytics/analytics-three-month-visitor', [NewAnalyticsController::class,"analyticsThreeMonthVisitor"]);
     Route::get('/analytics/analytics-thirty-day-visitor', [NewAnalyticsController::class,"analyticsThirtyDayVisitor"]);

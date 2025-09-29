@@ -7,6 +7,17 @@ use Illuminate\Http\Request;
 
 class CustomAnalyticsController extends Controller
 {
+     /**
+     * List of traits used in this controller.
+     */
+    use \App\Traits\ApiResponder;
+
+    public function allData(Request $request)
+    {
+        return $this->successResponse([],"success all data",201);
+    }
+
+
     /**
      * Display a listing of the resource.
      */

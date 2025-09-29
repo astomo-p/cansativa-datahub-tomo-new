@@ -10,6 +10,9 @@ use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use GuzzleHttp\Client;
 use Modules\NewContactData\Models\Files;
 use Modules\B2BContactAdjustment\Http\Controllers\B2BContactAdjustmentController;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
+use Modules\NewContactData\Helpers\ContactTypeHelper;
+
 
 class FileProcessorController extends Controller
 {
@@ -88,6 +91,46 @@ class FileProcessorController extends Controller
           catch (\Exception $e) {
             return $this->errorResponse('File upload failed: ' . $e->getMessage(), 500);
           }
+    }
+
+    public function dataTypeImporter(Request $request)
+    {
+        $tempFile = $request->file('import'); 
+        $reader = new XlsxReader();
+        $spreadsheet = $reader->load($tempFile);
+        $worksheet = $spreadsheet->getActiveSheet()->toArray();
+        $results = [];
+        $first_row = $worksheet[0];  
+        $count = 1;  
+        
+        while($count < count($worksheet)){
+            $row = $worksheet[$count];
+            $data = [];
+            for($i=0; $i < count($first_row); $i++){
+                if(isset($row[$i])){
+                    $data[$first_row[$i]] = $row[$i];
+                } else {
+                    $data[$first_row[$i]] = null;
+                }
+            }
+            $results[] = $data;
+            $count++;
+        }
+
+        $new_results = [];
+        foreach($results as $item){
+            $keys = array_keys($item);
+            foreach($keys as $value){
+                $new_results[] = [
+                "column"=>[$value=>$item[$value]],
+                "data_type"=>ContactTypeHelper::checkDataType($item[$value])
+            ];
+            }
+            
+        }
+
+        return $this->successResponse($new_results, 'File uploaded successfully', 200);
+       
     }
     
     

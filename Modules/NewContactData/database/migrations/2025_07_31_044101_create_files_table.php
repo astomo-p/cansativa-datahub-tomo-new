@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-       /*  Schema::create('files', function (Blueprint $table) {
+        /* Schema::create('files', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('contact_id')->nullable();
             $table->string('file_name')->nullable();

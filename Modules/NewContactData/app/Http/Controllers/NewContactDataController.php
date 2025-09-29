@@ -14,7 +14,7 @@ use Modules\NewAnalytics\Models\UserSavedPosts;
 use Modules\NewAnalytics\Models\VisitorLikes;
 use Modules\NewAnalytics\Models\UserComments;
 use Modules\NewContactData\Models\HistoryExports;
-use Modules\Users\Models\Users;
+use Modules\NewContactData\Models\Users;
 use Modules\NewContactData\Models\SavedFilters;
 use Modules\NewContactData\Models\SharedContactLogs;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Storage;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use GuzzleHttp\Client;
 use Automattic\WooCommerce\Client as WooClient;
+use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
@@ -32,6 +33,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Modules\B2BContactAdjustment\Http\Controllers\B2BContactAdjustmentController;
 use Modules\NewContactData\Models\AccountKeyManagers; 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
+use Modules\AuditLog\Events\AuditLogged;
+use Modules\AuditLog\Events\ContactLogged;
+use Modules\AuditLog\Models\AuditLogs;
+use Modules\B2BContact\Models\ColumnMappings;  
+use Modules\NewContactData\Helpers\ContactFieldHelper;
+use Modules\NewContactData\Models\ContactField;
+use Modules\NewContactData\Models\ContactFieldValue;
 
 class NewContactDataController extends Controller
 {
@@ -158,91 +167,73 @@ class NewContactDataController extends Controller
             12 => 'December'
         ];
 
-        //pharmacy
-       /*  $pharmacy = [];
-        for($i = 1; $i <= 12; $i++){
-            $pharmacy[$i] = ContactTypes::find($this->contact_pharmacy->id)->contacts()
-            ->whereMonth('created_date', $i)
-            ->whereYear('created_date', $now)
-            ->count();
-        }
-        $pharmacy_result = [];
-        foreach($pharmacy as $key => $value){
-            $pharmacy_result[$months[$key]] = (int) $value;
-        } */
+        $total_community = 0;
+        $total_pharmacy_db = 0;
+        $community_result = [];
+        $pharmacy_db_result = [];
 
-        //supplier
-        /* $supplier = [];
-        for($i = 1; $i <= 12; $i++){
-            $supplier[$i] = ContactTypes::find($this->contact_supplier->id)->contacts()
-            ->whereMonth('created_date', $i)
-            ->whereYear('created_date', $now)
-            ->count();
+        $month = Carbon::now()->month;
+
+        for($i = 1; $i <= $month; $i++){
+            $count_community = Contacts::where('contact_type_id', $this->contact_community->id)
+                    ->whereMonth('created_date', $i)
+                    ->whereYear('created_date', $now)
+                    ->where('is_deleted', false)
+                    ->count();
+            $total_community = $total_community + $count_community;
+            $community_result[$months[$i]] = $total_community;
+
+            $count_pharmacy_db = Contacts::where('contact_type_id', $this->contact_pharmacy_db->id)
+                    ->whereMonth('created_date', $i)
+                    ->whereYear('created_date', $now)
+                    ->where('is_deleted', false)
+                    ->count();
+            $total_pharmacy_db = $total_pharmacy_db + $count_pharmacy_db;
+            $pharmacy_db_result[$months[$i]] = $total_pharmacy_db;
         }
-        $supplier_result = [];
-        foreach($supplier as $key => $value){
-            $supplier_result[$months[$key]] = (int) $value;
-        } */
 
         //community
-        $community = [];
-        for($i = 1; $i <= 12; $i++){
-            $community[$i] = ContactTypes::find($this->contact_community->id)->contacts()
-            ->whereMonth('created_date', $i)
-            ->whereYear('created_date', $now)
-            ->count();
-        }
-        $community_result = [];
-        foreach($community as $key => $value){
-            $community_result[$months[$key]] = (int) $value;
-        }
+        // $community = [];
+        // for($i = 1; $i <= 12; $i++){
+        //     $community[$i] = ContactTypes::find($this->contact_community->id)->contacts()
+        //     ->whereMonth('created_date', $i)
+        //     ->whereYear('created_date', $now)
+        //     ->count();
+        // }
+        // $community_result = [];
+        // foreach($community as $key => $value){
+        //     $community_result[$months[$key]] = (int) $value;
+        // }
 
-        //general newsletter
-       /*  $general_newsletter = [];
-        for($i = 1; $i <= 12; $i++){
-            $general_newsletter[$i] = ContactTypes::find($this->contact_general_newsletter->id)->contacts()
-            ->whereMonth('created_date', $i)
-            ->whereYear('created_date', $now)
-            ->count();
-        }
-        $general_newsletter_result = [];
-        foreach($general_newsletter as $key => $value){
-            $general_newsletter_result[$months[$key]] = (int) $value;
-        } */
+        // //pharmacy db
+        // $pharmacy_db = [];
+        // for($i = 1; $i <= 12; $i++){
+        //     $pharmacy_db[$i] = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+        //     ->whereMonth('created_date', $i)
+        //     ->whereYear('created_date', $now)
+        //     ->count();
+        // }
+        // $pharmacy_db_result = [];
+        // foreach($pharmacy_db as $key => $value){
+        //     $pharmacy_db_result[$months[$key]] = (int) $value;
+        // }
 
-        //pharmacy db
-        $pharmacy_db = [];
-        for($i = 1; $i <= 12; $i++){
-            $pharmacy_db[$i] = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
-            ->whereMonth('created_date', $i)
-            ->whereYear('created_date', $now)
-            ->count();
-        }
-        $pharmacy_db_result = [];
-        foreach($pharmacy_db as $key => $value){
-            $pharmacy_db_result[$months[$key]] = (int) $value;
-        }
-
-        //subscriber
-        $subscriber = [];
-        for($i = 1; $i <= 12; $i++){
-            $subscriber[$i] = ContactTypes::find($this->contact_subscriber->id)->contacts()
-            ->whereMonth('created_date', $i)
-            ->whereYear('created_date', $now)
-            ->count();
-        }
-        $subscriber_result = [];
-        foreach($subscriber as $key => $value){
-            $subscriber_result[$months[$key]] = (int) $value;
-        }
+        // //subscriber
+        // $subscriber = [];
+        // for($i = 1; $i <= 12; $i++){
+        //     $subscriber[$i] = ContactTypes::find($this->contact_subscriber->id)->contacts()
+        //     ->whereMonth('created_date', $i)
+        //     ->whereYear('created_date', $now)
+        //     ->count();
+        // }
+        // $subscriber_result = [];
+        // foreach($subscriber as $key => $value){
+        //     $subscriber_result[$months[$key]] = (int) $value;
+        // }
 
         $res = [
-          //'Pharmacies' => $pharmacy_result,
-          //'Suppliers' => $supplier_result,
-          //'General Newsletter' => $general_newsletter_result,
           'Community' => $community_result,
-          'Pharmacy Database' => $pharmacy_db_result,
-          'Subscriber' => $subscriber_result
+          'Pharmacy Database' => $pharmacy_db_result
         ];
        return $this->successResponse($res,'Contact growth',200);
     }
@@ -273,7 +264,23 @@ class NewContactDataController extends Controller
             ]);
         }
          else  */
-         if($request->type == 'subscribers'){
+         if($request->type == 'pharmacy-database'){
+
+             $prev_month = date('m',strtotime('-1 Month'));
+            $current_month = date('m');
+            $prev_month_count = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            ->whereMonth('created_date', $prev_month)
+            ->count();
+            $current_month_count = ContactTypes::find($this->contact_pharmacy_db->id)->contacts()
+            ->whereMonth('created_date', $current_month)
+            ->count();
+            $diff =  $current_month_count - $prev_month_count;
+            array_push($res, [
+                'total' => $current_month_count,
+                'delta' => $diff > 0 ? '+'.$diff : $diff,
+            ]);
+        }
+        else if($request->type == 'subscribers'){
 
             $prev_month = date('m',strtotime('-1 Month'));
             $current_month = date('m');
@@ -805,7 +812,7 @@ class NewContactDataController extends Controller
         //$multi_sort = false;
         $sorts = [];
         if($request->get('sort') == ''){
-           $sorts = [['contacts.id','asc']];
+           $sorts = [['contacts.id','desc']];
         } else {
             $cleaned_sorts = preg_replace(['/\[/','/\]/','/"/'],'', $request->get('sort'));
             $sorts = array_map(function($sort){
@@ -884,7 +891,8 @@ class NewContactDataController extends Controller
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
+                      ->orWhere('contacts.email', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.contact_name', 'like', '%'. strtoupper($search) .'%');
             })
             ->where('contacts.is_deleted', 'false')->select()
             //->orderBy($sort_column, $sort_direction)->select()
@@ -1039,7 +1047,8 @@ class NewContactDataController extends Controller
                 } 
                 $formatted_results[] = $item->except('account_key_manager_id');
             }
-            
+
+            $formatted_results[] = ContactFieldHelper::getContactFieldData($item->id,$item); 
         } 
         
         $res = [
@@ -1057,41 +1066,59 @@ class NewContactDataController extends Controller
 
      public function addCommunityData(Request $request)
      {
-        $request_data = json_decode($request->getContent(), true);
-
         // Format the request data
-        $formatted_request_data = [];
+       $result = [];
+       // Define your start date (e.g., the first day of reading)
+        $startDate = Carbon::create(2025, 9, 20); // adjust as needed
+        $currentDate = Carbon::today();
 
-        $blocked = ['likes','comments','submissions'];
+        // Calculate how many days have passed
+        $dayIndex = $startDate->diffInDays($currentDate);
 
-        foreach($request_data as $key => $value){
-            /* if($key == 'email_subscription'){
-                $formatted_request_data['cansativa_newsletter'] = $value;
-            } else */ if(in_array($key,$blocked)){} 
-            else if($key == 'account_key_manager'){
-                $account_key_mgr_data = $value;
-                $account_key_mgr_id = AccountKeyManagers::insertGetId([
-                    "manager_name" => $account_key_mgr_data["key_manager_name"],
-                    "message_template_name" => $account_key_mgr_data["message_template_name"] ?? null,
-                    "auto_reply" => $account_key_mgr_data["auto_reply"],
-                    "email" => $account_key_mgr_data["email"],
-                    "phone" => $account_key_mgr_data["phone"]
-                ]);
-                $formatted_request_data['account_key_manager_id'] = $account_key_mgr_id;
-            }
-            else {
-                $formatted_request_data[$key] = $value;
-            }
+        // Calculate offset
+        $offset = $dayIndex < 0 ? 0 : $dayIndex * 15;
+
+        $user_data = Users::where('user_type','user')->skip($offset)->take(15)->get();
+        foreach($user_data as $user){
+            $formatted_request_data = [];
+
+           $formatted_request_data['contact_name'] = $user->full_name;
+           $formatted_request_data['email'] = $user->email; 
+           $formatted_request_data['phone_no'] = $user->phone;
+           $formatted_request_data['wa_subscription'] = $user->accept_wa_promotion;
+           $formatted_request_data['email_subscription'] = $user->accept_email_promotion;
+           $formatted_request_data['comments'] = Users::join('user_comments','users.id','=','user_comments.user_id')->where('users.id',$user->id)->count();
+           $formatted_request_data['likes'] =Users::join('user_saved_posts',function($join){
+                    $join->on('users.id','=','user_saved_posts.user_id')
+                        ->where('user_saved_posts.is_like','=','true');
+                })->where('users.id',$user->id)->count();
+            $formatted_request_data['submissions'] = Users::join('conversations',function($join){
+                    $join->on('users.id','=','conversations.sender_id')
+                        ->where('conversations.conversation_type','=','submission');
+                })->where('users.id',$user->id)->count();
+            $formatted_request_data['contact_type_id'] = $this->contact_community->id;
+            $formatted_request_data['created_by'] = 12;
+
+            $account_key_mgr_id = AccountKeyManagers::insertGetId([
+                    "manager_name" => $user->full_name,
+                    "message_template_name" => null,
+                    "auto_reply" => null,
+                    "email" => $user->email,
+                    "phone" => $user->phone
+                ]); 
+            $formatted_request_data['account_key_manager_id'] = $account_key_mgr_id;
+             array_push($result,$formatted_request_data);
         }
+       
+       
 
-        $formatted_request_data['contact_type_id'] = $this->contact_community->id;
-        $formatted_request_data['created_by'] = 12;
+        
 
         // Create the contact
        // Contacts::create($request_data);
-       Contacts::insert($formatted_request_data);
-
-        $inserted_id = Contacts::orderBy('id','desc')->take(count($formatted_request_data))->pluck('id');
+       Contacts::insert($result);
+        $inserted_id = [];
+        $inserted_id = Contacts::orderBy('id','desc')->take(count($result))->pluck('id');
        $recorded = [];
         foreach($inserted_id as $id){
                 $recorded[] = [
@@ -1110,9 +1137,10 @@ class NewContactDataController extends Controller
             ];
         }
 
-       SharedContactLogs::insert($recorded);
+        SharedContactLogs::insert($recorded);
+        event(new AuditLogged(AuditLogs::MODULE_COMMUNITY, 'Create new Contact'));
 
-        return $this->successResponse($formatted_request_data,'Community data added successfully',200);
+        return $this->successResponse($result,'Community data added successfully',200);
      }
 
      /**
@@ -1137,11 +1165,11 @@ class NewContactDataController extends Controller
                     $formatted_request_data['cansativa_newsletter'] = $value;
                 } else {
                     $formatted_request_data[$key] = $value;
-                } */ if(in_array($key,$blocked)){} 
+                } if(in_array($key,$blocked)){} 
             
-            else {
+            else {  */ 
                $formatted_request_data[$key] = $value;
-              }
+             // }
             }
 
             // Update the contact
@@ -1161,6 +1189,7 @@ class NewContactDataController extends Controller
                 "campaign_image"=>""
             ])
             ]);  
+            event(new AuditLogged(AuditLogs::MODULE_COMMUNITY, 'Edit Contact'));
 
             return $this->successResponse(null,'Community data updated successfully',200);
         }
@@ -1171,10 +1200,8 @@ class NewContactDataController extends Controller
 
       public function communityDataById(Request $request,$id)
       {
-         $result = Contacts::where('is_deleted', 'false')
-         ->where('id', $id)
-         ;
-        if(is_null($result)){
+         $result = Contacts::where('id', $id);
+        if($result->count() == 0){
             return $this->errorResponse('Error',404, 'Community not found');
         }
 
@@ -1204,10 +1231,14 @@ class NewContactDataController extends Controller
                 } 
                 $formatted_results[] = $item->except('account_key_manager_id');
             }
-            
+
+            $formatted_results[] = ContactFieldHelper::getContactFieldData($item->id,$item);   
+        
         }         
 
-       return $this->successResponse($formatted_results,'Community data by ID',200);
+        //$result = count($formatted_results > 0) ? $formatted_results[0] : null;
+
+       return $this->successResponse($formatted_results[0],'Community data by ID',200);
       } 
 
       /**
@@ -1216,16 +1247,16 @@ class NewContactDataController extends Controller
         public function deleteCommunityDataById(Request $request,$id)
         {
             $result = Contacts::where('id',$id)
-            ->where('is_deleted', 'false')
+           // ->where('is_deleted', 'false')
             ->count(); 
             if($result == 0){
                 return $this->errorResponse('Error',404, 'Community not found');
             }
 
             // Soft delete the contact
-            $result = Contacts::find($id);
-            $result->is_deleted = true;
-            $result->save();
+             $result = Contacts::find($id)->delete();
+           // $result->is_deleted = true;
+           // $result->save();
 
              SharedContactLogs::insert([
             "type"=>"text",
@@ -1241,6 +1272,8 @@ class NewContactDataController extends Controller
                 "campaign_image"=>""
             ])
             ]);
+
+            event(new AuditLogged(AuditLogs::MODULE_COMMUNITY, 'Delete Contact'));
 
             return $this->successResponse(null,'Community data deleted successfully',200);
         }
@@ -1415,8 +1448,8 @@ class NewContactDataController extends Controller
         foreach($request_data as $key => $value){
            /*  if($key == 'email_subscription'){
                 $formatted_request_data['cansativa_newsletter'] = $value;
-            } else */ if(in_array($key,$blocked)){} 
-            else if($key == 'account_key_manager'){
+            } else  if(in_array($key,$blocked)){} 
+            else */ if($key == 'account_key_manager'){
                 $account_key_mgr_data = $value;
                 $account_key_mgr_id = AccountKeyManagers::insertGetId([
                     "manager_name" => $account_key_mgr_data["key_manager_name"],
@@ -1435,28 +1468,15 @@ class NewContactDataController extends Controller
       $formatted_request_data['contact_type_id'] = $this->contact_pharmacy_db->id;
       $formatted_request_data['created_by'] = 12;
 
-       Contacts::insert($formatted_request_data);
-
-       $inserted_id = Contacts::orderBy('id','desc')->take(count($formatted_request_data))->pluck('id');
-       $recorded = [];
-        foreach($inserted_id as $id){
-                $recorded[] = [
-            "type"=>"text",
-            "contact_flag" => "b2c",
-            "contact_id" => $id,
-            "creator_email" => $request->get('creator_email','admin@example.com'),
-            "creator_name" => $request->get('creator_name','admin'),
-            "description" => json_encode([
-                "title"=>"",
-                "from"=>"",
-                "template"=>"",
-                "filename"=> "",
-                "campaign_image"=>""
-            ])
-            ];
-        }
-
-       SharedContactLogs::insert($recorded);
+        $contactId = Contacts::insertGetId($formatted_request_data);
+        $userName = Auth::user()->user_name ?? 'cansativa';
+        $userEmail = Auth::user()->email ?? 'cansativa';
+        $description = [
+            'log_type' => "contacts",
+            'title' => "Added manually by ". $userName
+        ];
+        event(new ContactLogged('add_contact', 'b2b', $contactId, null, $description, $userName, $userEmail));
+        event(new AuditLogged(AuditLogs::MODULE_PHARMACY_DB, 'Create new Contact'));
 
         return $this->successResponse(null,'Pharmacy database data added successfully',200);
     }
@@ -1480,7 +1500,7 @@ class NewContactDataController extends Controller
         //$multi_sort = false;
         $sorts = [];
         if($request->get('sort') == ''){
-           $sorts = [['contacts.id','asc']];
+           $sorts = [['contacts.id','desc']];
         } else {
             $cleaned_sorts = preg_replace(['/\[/','/\]/','/"/'],'', $request->get('sort'));
             $sorts = array_map(function($sort){
@@ -1509,7 +1529,8 @@ class NewContactDataController extends Controller
             ->where(function($query) use ($search) {
                 $query->where('contacts.contact_name', 'like', '%'.$search.'%')
                       ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
-                      ->orWhere('contacts.email', 'like', '%'.$search.'%');
+                      ->orWhere('contacts.email', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.contact_name', 'like', '%'. strtoupper($search) .'%');
             })
             ->when($request->get('applied_filters'),function(Builder $query,$row){
                  foreach ($row as $key => $filter) {
@@ -1579,6 +1600,8 @@ class NewContactDataController extends Controller
                 } 
                 $formatted_results[] = $item->except('account_key_manager_id');
             }
+
+             $formatted_results[] = ContactFieldHelper::getContactFieldData($item->id,$item);
             
         }
 
@@ -1601,23 +1624,84 @@ class NewContactDataController extends Controller
 
         $result = Contacts::where('id', $id)
         ->where('contact_parent_id', $parentId)
-        ->get();
+        ->first();
         if(!$result){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
         }
 
-        DB::beginTransaction();
-        $request_data = json_decode($request->getContent(), true);
         try {
-            // Update the contact childs
-            Contacts::where('id', $id)
-            ->where('contact_parent_id', $parentId)
-            ->update($request_data);
+            $request_data = json_decode($request->getContent(), true);
+            DB::beginTransaction();
+            // Fill data first
+            $result->fill($request_data);
+
+            // Compare before save
+            $dirty = collect($result->getDirty())->except(['updated_date']);
+            $original = $result->getOriginal();
+
+            // log changes
+            $userName = Auth::user()->user_name ?? 'cansativa';
+            $userEmail = Auth::user()->email ?? 'cansativa';
+
+            $editPhone = false;
+            $editcountryCode = false;
+            foreach ($dirty as $attr => $newValue) {
+                $field_name = ColumnMappings::where('field_name', $attr)->where('contact_type_id', 5)->value('display_name');
+                // skip some attributes
+                if ($attr == 'phone_no') {
+                    $editPhone = true;
+                    continue;
+                }
+                if ($attr == 'country_code') {
+                    $editcountryCode = true;
+                    continue;
+                }
+
+                $ori = $original[$attr] ?? 'empty';
+                // If this attribute is boolean
+                if (in_array($attr, ['whatsapp_subscription', 'email_subscription'])) {
+                    $ori = filter_var($ori, FILTER_VALIDATE_BOOLEAN) ? 'Yes' : 'No';
+                    $newValue = filter_var($newValue, FILTER_VALIDATE_BOOLEAN) ? 'Yes' : 'No';
+                }
+
+                $description = [
+                    'log_type' => "edit_contact",
+                    'title' => "{$field_name} edited from {$ori} to $newValue"
+                ];
+                event(new ContactLogged('edit_contact', 'b2b', $result->id, null, $description, $userName, $userEmail));
+            }
+            
+            if ($editPhone || $editcountryCode) {
+                $cc = $original['country_code'] ?? null;
+                $newCC = $original['country_code'] ?? null;
+                if ($editcountryCode) {
+                    $newCC = $dirty['country_code'];
+                }
+
+                $ori = $original['phone_no'] ?? 'empty';
+                $newValue = $original['phone_no'];
+                if ($editPhone) {
+                    $newValue = $dirty['phone_no'];
+                }
+
+                $description = [
+                    'log_type' => "edit_contact",
+                    'title' => "Phone edited from {$cc}{$ori} to {$newCC}{$newValue}"
+                ];
+                event(new ContactLogged('edit_contact', 'b2b', $result->id, null, $description, $userName, $userEmail));    
+            }
+
+            // save updated data
+            $result->save();
+            $result->refresh();
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error',500, 'Failed to update pharmacy database: ' . $e->getMessage());
         }
+
+        event(new AuditLogged(AuditLogs::MODULE_PHARMACY_DB, 'Edit Contact'));
 
         return $this->successResponse(null,'Pharmacy database data updated successfully',200);
     }
@@ -1661,11 +1745,16 @@ class NewContactDataController extends Controller
             else {
             $formatted_results[$key] = $value; 
             }
-        }          
+            
+        }
+
+        $formatted_results = ContactFieldHelper::getContactFieldData($formatted_results['id'],$formatted_results);
+        
+        
+                  
         
     
-
-       return $this->successResponse($formatted_results,'Pharmacy database data by ID',200);
+        return $this->successResponse($formatted_results,'Pharmacy database data by ID',200);
     }
 
     /**
@@ -1676,7 +1765,7 @@ class NewContactDataController extends Controller
      {
         $parent = Contacts::where('contact_parent_id', $parentId)
         ->where('id',$id)
-        ->where('is_deleted', 'false')
+       // ->where('is_deleted', 'false')
         ->count();
         if($parent == 0){
             return $this->errorResponse('Error',404, 'Pharmacy database not found');
@@ -1685,27 +1774,14 @@ class NewContactDataController extends Controller
         DB::beginTransaction();
         try {
             // Soft delete the contact
-            Contacts::where('id',$id)->update(['is_deleted' => true]);
+            Contacts::where('id',$id)->delete();//->update(['is_deleted' => true]);
             DB::commit();
-            SharedContactLogs::insert([
-            "type"=>"text",
-            "contact_flag" => "b2c",
-            "contact_id" => $id,
-            "creator_email" => $request->get('creator_email','admin@example.com'),
-            "creator_name" => $request->get('creator_name','admin'),
-            "description" => json_encode([
-                "title"=>"",
-                "from"=>"",
-                "template"=>"",
-                "filename"=> "",
-                "campaign_image"=>""
-            ])
-            ]); 
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error',500, 'Failed to delete pharmacy database: ' . $e->getMessage());
         }
 
+        event(new AuditLogged(AuditLogs::MODULE_PHARMACY_DB, 'Delete Contact'));
         return $this->successResponse(['parent'=>$parentId,'id'=>$id],'Pharmacy database data deleted successfully',200);
      }
 
@@ -2170,7 +2246,7 @@ class NewContactDataController extends Controller
                         'to' => $recipient[0]->phone_no,
                         'type' => 'template',
                         'template' => [
-                            'name' => 'report_template_cta',
+                            'name' => $request->get('wa_template_name','report_template_cta'),
                             'language' => [
                                 'code' => 'en'
                             ],
@@ -2210,8 +2286,8 @@ class NewContactDataController extends Controller
                 'name' => 'Contact Data Export',
                 'subject' => 'Your Contact Data Report is Ready',
                 'sender' => [
-                    'name' => 'Cansativa',
-                    'email' => env('BREVO_SENDER_EMAIL','siroja@kemang.sg'),
+                    'name' => env('MAIL_FROM_NAME','Cansativa'),
+                    'email' => env('MAIL_FROM_ADDRESS_PROD','notification@cansativa.de'),
                 ],
                 'htmlContent' => "<html><body><h1>Please download your report</h1><p><a href='".$links."'>Here</a></p></body></html>",
                 'to' => [
@@ -2884,6 +2960,133 @@ class NewContactDataController extends Controller
         ],'successfully retrieved pharmacy database user stats',200);
     }
 
+    /**
+     * Get all pharmacy database
+     */
+    public function pharmacyDatabaseAll(Request $request)
+    {
+         $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts() 
+        ->where('contacts.is_deleted', 'false')
+        ->get();
+
+        if($results->isEmpty()){
+            return $this->errorResponse('Error',404, 'Pharmacy database not found');
+        }
+
+        //weird multi sort
+        //$multi_sort = false;
+        $sorts = [];
+        if($request->get('sort') == ''){
+           $sorts = [['contacts.id','desc']];
+        } else {
+            $cleaned_sorts = preg_replace(['/\[/','/\]/','/"/'],'', $request->get('sort'));
+            $sorts = array_map(function($sort){
+                $sorted = explode('_',$sort);
+                $sort_dir = array_slice($sorted,-1,1);
+                $sort_column = implode('_',array_slice($sorted,0,-1));
+                return ['contacts.' . $sort_column,$sort_dir[0]];
+            },explode(',',$cleaned_sorts));  
+        }
+
+        //default pagination setup
+       // $sort_column = explode('-',$request->get('sort'))[0] ?? 'contacts.id';
+       // $sort_direction = explode('-',$request->get('sort'))[1] ?? 'asc';
+        $start = $request->get('start', 0);
+        $length = $request->get('length', 10);
+        $search = $request->get('search');
+
+        //basic response metrics
+        $records_total = $results->count();
+        $records_filtered = $records_total;
+
+        if($search){
+            $search = trim($search);
+            $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts() 
+            ->where(function($query) use ($search) {
+                $query->where('contacts.contact_name', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.contact_no', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.email', 'like', '%'.$search.'%')
+                      ->orWhere('contacts.contact_name', 'like', '%'. strtoupper($search) .'%');
+            })
+            ->when($request->get('applied_filters'),function(Builder $query,$row){
+                 foreach ($row as $key => $filter) {
+                 $filtered = is_array($filter) ? $filter : json_decode($filter, true);
+                 $query = FilterHelper::getFilterQuery($query, $filtered); 
+                }
+            })
+            ->where('contacts.is_deleted', 'false');
+            //->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+
+            foreach($sorts as $sort){
+               $results = $results->orderBy($sort[0],$sort[1]);
+            }
+
+            $results = $results 
+            ->take($length)
+            ->skip($start)
+            ->get();
+        } else {
+            $results = ContactTypes::find($this->contact_pharmacy_db->id)->contacts() 
+            ->when($request->get('applied_filters'),function(Builder $query,$row){
+                 foreach ($row as $key => $filter) {
+                 $filtered = is_array($filter) ? $filter : json_decode($filter, true);
+                 $query = FilterHelper::getFilterQuery($query, $filtered); 
+                }
+            })
+            ->where('contacts.is_deleted', 'false');
+           // ->orderBy($sort_column, $sort_direction);
+            $records_filtered = $results
+            ->count();
+
+            foreach($sorts as $sort){
+               $results = $results->orderBy($sort[0],$sort[1]);
+            }
+
+            $results = $results 
+            ->take($length)
+            ->skip($start)
+            ->get();
+        }
+
+         $formatted_results = [];
+
+        foreach($results as $item){
+            $check = isset($item->custom_fields);
+            if($check){
+                $fields = json_decode($item->custom_fields, true);
+                foreach($fields as $key => $value){
+                    $item->$key = $value;
+                }
+                $formatted_results[] = $item->except('custom_fields');
+            } else {
+                $formatted_results[] = $item;
+            }
+
+            if(!is_null($item->account_key_manager_id)){
+                $key_mgr_data = AccountKeyManagers::where('id',$item->account_key_manager_id)->get();
+                 foreach($key_mgr_data as $items){
+                     $item->{'key_manager_name'} = $items->manager_name;
+                     $item->{'key_manager_email'} = $items->email;
+                     $item->{'key_manager_phone'} = $items->phone;
+                     $item->{'key_manager_auto_reply'} = $items->auto_reply;
+                     $item->{'key_manager_message_template'} = $items->message_template_name;
+                } 
+                $formatted_results[] = $item->except('account_key_manager_id');
+            }
+            
+        }
+
+        $res = [
+            'recordsTotal' => $records_total,
+            'recordsFiltered' => $records_filtered,
+            'data' => $formatted_results
+        ];
+
+       return $this->successResponse($res,'Pharmacy database all',200);
+    }
+
 
     /**
      * Save imported contact data
@@ -2917,6 +3120,8 @@ class NewContactDataController extends Controller
 
         $request_data = json_decode($request->getContent(), true);
         $imported_data = []; 
+        $imported_custom_data = [];
+        $imported_custom_data_value = [];
 
         /**
          * Example of request_data structure:
@@ -2934,39 +3139,60 @@ class NewContactDataController extends Controller
              break;
         }
 
+        $contact_field_columns = [];
+
         for($i = 0; $i < count($imported_data); $i++){
+            $field_column = [];
             foreach($request_data as $key => $array_data){
                 if(in_array($key, $default_columns)){
                   $imported_data[$i][$key] = $array_data[$i];
                 } else if($key == 'full_name'){
                     $imported_data[$i]['contact_name'] = $array_data[$i];
-                }  
+                } else {
+                    //import custom contact field here
+                    $field_column[$key] = $array_data[$i];
+                    }  
             }
+            $contact_field_columns[] = $field_column;
             $imported_data[$i]['contact_type_id'] = $contact_type_id;
             $imported_data[$i]['created_by'] = $request->user_id ?? 12;
             $imported_data[$i]['user_id'] = $request->user_id ?? 12;
             $imported_data[$i]['created_date'] = date('Y-m-d H:i:s');
         }
 
-        
-        $json_array = [];
-
-        for($i = 0; $i < count($imported_data); $i++){
-            foreach($request_data as $key => $array_data){
-                if(!in_array($key, $default_columns)){
-                  $json_array[$i][$key] = $array_data[$i];
-                } 
-            }
+        foreach($contact_field_columns as $column) {
+            $keys = array_keys($column);
+            $values = array_values($column);
+            $fielder = [];
+           for($i = 0; $i < count($keys); $i++){
+              $fielder[] = ContactFieldHelper::pushContactField($keys[$i],$values[$i]);
+           }
+           $imported_custom_data[] = $fielder;
         }
 
-        for($i = 0; $i < count($imported_data); $i++){
-            $imported_data[$i]['custom_fields'] = json_encode($json_array[$i]);
-        }
 
-       Contacts::insert($imported_data);
+      Contacts::insert($imported_data);
+       
+       foreach($imported_custom_data as $items){
+           foreach($items as $item){
+              $check = ContactField::where('field_name',$item['field_name'])->count();
+             if($check == 0){
+                 ContactField::insert([
+                    "field_name"=> $item['field_name'],
+                    "field_type"=> $item['field_type'],
+                    "description"=> $item['description']
+                ]); 
+             } 
+           }
+       }
+      
+
+       $contact_field_value = [];
 
        $inserted_id = Contacts::orderBy('id','desc')->take(count($imported_data))->pluck('id');
        $recorded = [];
+       $contact_field_value = [];
+       $counter = 0;
         foreach($inserted_id as $id){
                 $recorded[] = [
             "type"=>"import",
@@ -2982,9 +3208,16 @@ class NewContactDataController extends Controller
                 "campaign_image"=>""
             ])
             ];
+            //insert custom contact field here
+           // var_dump(json_encode($imported_custom_data[$counter]));
+            $contact_field_value[] = ContactFieldHelper::pushFieldValue($imported_custom_data[$counter],$id);
+            $counter++;
         }
 
        SharedContactLogs::insert($recorded);
+       foreach($contact_field_value as $value){
+                ContactFieldValue::insert($value);  
+       }
 
         
 
@@ -3039,6 +3272,23 @@ class NewContactDataController extends Controller
         }
         
         return $this->successResponse(null,'successfully saved imported contact data',200);
+    }
+
+    /**
+     * Get contact metrics
+     */
+    public function getMetricsData()
+    {
+        $results = [];
+        $total_contacts = Contacts::where('contacts.is_deleted', false)->count();
+        $new_contacts = Contacts::where('contacts.is_deleted', false)->where('created_date',  '>=', Carbon::now()->subDays(30))->count();
+
+        $results = [
+          'total_contacts' => $total_contacts,
+          'new_contacts' => $new_contacts,
+        ];
+
+        return $this->successResponse($results, 'Contacts statistics retrived successfully', 200);
     }
 
 

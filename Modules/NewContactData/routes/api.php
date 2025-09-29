@@ -7,8 +7,10 @@ use Modules\NewContactData\Http\Controllers\WoocommerceDataController;
 use Modules\NewContactData\Http\Controllers\ContactGeoController;
 use Modules\NewContactData\Http\Controllers\SavedFilterController;
 use Modules\NewContactData\Http\Controllers\HistoryExportController;
+use Modules\NewContactData\Http\Controllers\WaTemplateAttributesController;
 
 Route::prefix('v1')->name('api.')->group(function () {
+    Route::post('datahub/b2c/data-type-importer',[FileProcessorController::class,'dataTypeImporter']);
     Route::post('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
     Route::post('datahub/b2c/import', [NewContactDataController::class, "importData"]);
     Route::post('datahub/b2c/import/save', [NewContactDataController::class, "importSave"]);
@@ -28,7 +30,7 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::post('datahub/b2c/contact/filter/add', [SavedFilterController::class, "saveNewFilter"]);
     Route::put('datahub/b2c/contact/filter/id/{id}', [SavedFilterController::class, "updateFilter"]);
     Route::delete('datahub/b2c/contact/filter/id/{id}', [SavedFilterController::class, "deleteFilter"]);
-
+    Route::get("datahub/b2c/contact/metrics", [NewContactDataController::class, "getMetricsData"]);
     
     
     
@@ -45,7 +47,9 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('datahub/b2c/contact/countries',[ContactGeoController::class,'getCountries']);
     Route::get('datahub/b2c/contact/country/{country}/cities',[ContactGeoController::class,'getCitiesByCountry']);
     Route::get('datahub/b2c/contact/country/{country}/city/{city}/postcodes',[ContactGeoController::class,'getPostcodesByCityAndCountry']);
-    
+    Route::post('datahub/contact/wa-template-attributes/add',[WaTemplateAttributesController::class,'addWaTemplateAttributes']);
+    Route::get('datahub/contact/wa-template-attributes/all',[WaTemplateAttributesController::class,'allWaTemplateAttributes']);
+    Route::delete('datahub/contact/wa-template-attributes/{id}',[WaTemplateAttributesController::class,'deleteWaTemplateAttributes']);
     
 });
 
@@ -78,10 +82,10 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('datahub/b2c/contact/contact-growth', [NewContactDataController::class, "contactGrowth"]);
     Route::get('datahub/b2c/contact/top-contact-card', [NewContactDataController::class, "topContactCard"]);
     Route::get('datahub/b2c/contact/top-five-area-community',[NewContactDataController::class,'topFiveAreaCommunity']);
-
+    
     Route::get('datahub/b2c/contact/community-data/all', [NewContactDataController::class, "allCommunityData"]);
     Route::get('datahub/b2c/contact/community-data/id/{id}', [NewContactDataController::class, "communityDataById"]);
-    Route::post('datahub/b2c/contact/community-data/add', [NewContactDataController::class, "addCommunityData"]);
+    Route::get('datahub/b2c/contact/community-data/add', [NewContactDataController::class, "addCommunityData"]);
     Route::put('datahub/b2c/contact/community-data/id/{id}', [NewContactDataController::class, "updateCommunityDataById"]);
     Route::delete('datahub/b2c/contact/community-data/id/{id}', [NewContactDataController::class, "deleteCommunityDataById"]);
     // Route::get('datahub/b2c/contact/subscriber-data/all', [NewContactDataController::class, "allSubscriberData"]);
@@ -90,6 +94,7 @@ Route::prefix('v1')->name('api.')->group(function () {
     // Route::put('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "updateSubscriberDataById"]);
     // Route::delete('datahub/b2c/contact/subscriber-data/id/{id}', [NewContactDataController::class, "deleteSubscriberDataById"]);
     
+    Route::get('datahub/b2c/contact/pharmacy-database/all', [NewContactDataController::class, "pharmacyDatabaseAll"]);
     Route::get('datahub/b2c/contact/pharmacy-database/parent/{parentId}', [NewContactDataController::class, "pharmacyDatabaseByParentId"]);
     Route::post('datahub/b2c/contact/pharmacy-database/add', [NewContactDataController::class, "addPharmacyDatabase"]);
     Route::get('datahub/b2c/contact/pharmacy-database/parent/{parentId}/id/{id}', [NewContactDataController::class, "pharmacyDatabaseByParentIdAndId"]);

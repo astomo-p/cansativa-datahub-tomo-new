@@ -103,7 +103,11 @@ class PharmacyController extends Controller
         ->get();
 
         foreach ($results as $key => $data) {
-            $data->amount_contacts = B2BContacts::where('contact_parent_id',$data->id)->count();
+            //$data->amount_contacts = B2BContacts::where('contact_parent_id',$data->id)->count();
+            $lang = $request->header('Lang');
+            if($lang == 'de'){
+                $data->country = $translated = preg_replace(['/\b(german|germany)\b/i', '/\b(french|france)\b/i', '/\bindonesia\b/i'], ['Deutschland', 'Frankreich', 'Indonesien'], $data->country);
+            }
         }
 
         $res = [

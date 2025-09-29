@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Modules\AuditLog\Events\AuditLogged;
+use Modules\AuditLog\Models\AuditLogs;
 use Modules\AuditLog\Models\ContactLogs;
 use Modules\B2BContact\Helpers\FilterHelper;
 use Modules\NewContactData\Models\Contacts;
@@ -16,6 +18,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use Modules\NewContactData\Helpers\TranslatorHelper;
 
 class HistoryExportController extends Controller
 {
@@ -110,8 +113,17 @@ class HistoryExportController extends Controller
     
             // manipulate records
             foreach ($results as $key => $data) {
-                if ($data['applied_filters']) {
-                    $data['applied_filters'] = json_decode($data['applied_filters']);
+                if (isset($data['applied_filters'])) {
+                    $appliedFilters = $data['applied_filters'];
+
+                    if (is_string($appliedFilters)) {
+                        $decoded = json_decode($appliedFilters, true);
+                        $data['applied_filters'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : '-';
+                    } elseif (is_array($appliedFilters)) {
+                        $data['applied_filters'] = $appliedFilters; // already decoded
+                    } else {
+                        $data['applied_filters'] = '-';
+                    }
                 }
                 if (!is_null($data->savedFilter)) {
                     $data->savedFilter['applied_filters'] = json_decode($data->savedFilter['applied_filters']);
@@ -134,6 +146,14 @@ class HistoryExportController extends Controller
                     }
                 }
             }
+
+             foreach($results as $item){
+                $item->lang = $request->header('Lang');
+                if($request->header('Lang')){
+                    $meticulous = ucwords($item->contact_type);
+                    $item->contact_type = TranslatorHelper::getTranslate($meticulous,$request->header('Lang'));
+                }
+            }
     
             $data = [
                 'recordsTotal' => $records_total,
@@ -152,7 +172,7 @@ class HistoryExportController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:255',
-            'export_to' => 'nullable|in:xlsx,email,whatsapp',
+            'export_to' => 'nullable|in:.xlsx,xlsx,email,whatsapp',
             'contact_type' => 'required',
             'applied_filters' => 'nullable',
             'saved_filter_id' => 'nullable',
@@ -177,11 +197,37 @@ class HistoryExportController extends Controller
             $data['frequency_cap'] = json_encode($data['frequency_cap']);
         }
 
+        // count amount of contacts 
+        try {
+            $contact = $data['contact_type'];
+            $contact_type = [
+                'community'=>$this->contact_community->id,
+                'pharmacy-database'=>$this->contact_pharmacy_db->id
+            ];
+
+            $baseQuery = Contacts::where('contact_type_id', $contact_type[$contact])
+            ->where('contacts.is_deleted', false);
+            if ($request->has('applied_filters')) {
+                foreach ($request->applied_filters as $key => $filter) {
+                    FilterHelper::getFilterQuery($baseQuery, $filter);
+                }
+            }
+            $data['amount_of_contacts'] = $baseQuery->count();
+        } catch (\Exception $e) {
+            Log::error('failed to export data: ', [$e->getMessage()]);
+            return $this->errorResponse('Error', 400, 'Failed to export data. Invalid filter.');
+        }
+
+        if ($data['export_to'] == 'xlsx' || $data['export_to'] == '.xlsx') {
+            $data['export_to'] = '.xlsx';
+        }
         $result = HistoryExports::create($data);
 
         if (!$result) {
             return $this->errorResponse('Error', 400, 'Failed to create new export');
         }
+
+        event(new AuditLogged(AuditLogs::getModule($data['contact_type']), 'Create Newsletter-Export'));
         
         return $this->successResponse($result, 'New export created', 200);
     }
@@ -189,7 +235,7 @@ class HistoryExportController extends Controller
     public function updateHistoryExport(Request $request, $id)
     {
         $data = $request->validate([
-            'export_to' => 'nullable|in:xlsx,email,whatsapp',
+            'export_to' => 'nullable|in:.xlsx,xlsx,email,whatsapp',
             'applied_filters' => 'nullable',
             'saved_filter_id' => 'nullable',
             'newsletter_channel' => 'nullable',
@@ -213,6 +259,30 @@ class HistoryExportController extends Controller
             $data['frequency_cap'] = json_encode($data['frequency_cap']);
         }
 
+        // count amount of contacts 
+        try {
+            $contact = $data['contact_type'];
+            $contact_type = [
+                'community'=>$this->contact_community->id,
+                'pharmacy-database'=>$this->contact_pharmacy_db->id
+            ];
+
+            $baseQuery = Contacts::where('contact_type_id', $contact_type[$contact])
+            ->where('contacts.is_deleted', false);
+            if ($request->has('applied_filters')) {
+                foreach ($request->applied_filters as $key => $filter) {
+                    FilterHelper::getFilterQuery($baseQuery, $filter);
+                }
+            }
+            $data['amount_of_contacts'] = $baseQuery->count();
+        } catch (\Exception $e) {
+            Log::error('failed to export data: ', [$e->getMessage()]);
+            return $this->errorResponse('Error', 400, 'Failed to export data. Invalid filter.');
+        }
+
+        if ($data['export_to'] == 'xlsx' || $data['export_to'] == '.xlsx') {
+            $data['export_to'] = '.xlsx';
+        }
         $result = $export->update($data);
 
         if (!$result) {
@@ -232,9 +302,15 @@ class HistoryExportController extends Controller
             return $this->errorResponse('Failed to retrieve history export', 400);
         }
 
-        if ($result->applied_filters) {
-            $result->applied_filters = json_decode($result->applied_filters);
+        if (is_string($result->applied_filters)) {
+            $decoded = json_decode($result->applied_filters, true);
+            $data['applied_filters'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : '-';
+        } elseif (is_array($result->applied_filters)) {
+            $data['applied_filters'] = $result->applied_filters; // already decoded
+        } else {
+            $data['applied_filters'] = '-';
         }
+        
         if (!is_null($result->savedFilter)) {
             $result->savedFilter['applied_filters'] = json_decode($result->savedFilter['applied_filters']);
         }
@@ -420,12 +496,12 @@ class HistoryExportController extends Controller
             $chunk++;
         }
     
-        $filename = date('YmdHis') . "-" . $contact . ".xlsx";
+        $filename = "XLSX-Export.xlsx";
         $writer = new Xlsx($spreadsheet); 
         $writer->save($filename);
         
         HistoryExports::insert([
-            'name' => $request->name,
+            'name' => 'XLSX-Export',
             'contact_type' => 'B2B - '.ucwords(str_replace('-', ' ', $contact)),
             'applied_filters' => json_encode($request->applied_filters),
             'export_to'=> $request->get('export_to','.xlsx'),

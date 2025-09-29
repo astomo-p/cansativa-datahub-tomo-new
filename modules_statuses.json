@@ -9,5 +9,6 @@
     "Whatsapp": true,
     "Campaign": true,
     "WhatsappNewsletter": true,
-    "CustomAnalytics": true
+    "CustomAnalytics": true,
+    "Dashboard": true
 }

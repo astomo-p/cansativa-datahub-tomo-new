@@ -56,17 +56,20 @@ class SavedFilterController extends Controller
             $search = $request->get('search');
             
             //  filter records if there are any filter request
-            $baseQuery = SavedFilters::join('contact_types as ct', 'ct.id', 'saved_filters.contact_type_id')
-                            ->select('saved_filters.*', 'saved_filters.created_date as created_date', 'ct.contact_type_name as contact_type')
-                            ->where('saved_filters.is_deleted', false);
+            $baseQuery = SavedFilters::where('saved_filters.is_deleted', false);
             
-                            if ($request->has('applied_filters')) {
-                                foreach ($request->applied_filters as $key => $filter) {
-                                    FilterHelper::getFilterQuery($baseQuery, $filter, 'saved_filters');
-                                }
-                            }
+            if ($request->has('applied_filters')) {
+                foreach ($request->applied_filters as $key => $filter) {
+                    FilterHelper::getFilterQuery($baseQuery, $filter, 'saved_filters');
+                }
+            }
 
             try {
+                if ($request->has('filter_name')) {
+                    $filterSearch = trim($request->filter_name);
+                    $baseQuery->where('saved_filters.filter_name', 'ilike', '%'.$filterSearch.'%');
+                }
+
                 $records_total = $baseQuery->count();
                 $records_filtered = $records_total;
 
@@ -97,6 +100,13 @@ class SavedFilterController extends Controller
                 return $this->errorResponse('Error', 400, 'Failed to get saved filter data. Invalid filter format. ');
             }
 
+            $mapContact = [
+                1 => 'Pharmacy',
+                2 => 'Supplier',
+                3 => 'General Newsletter',
+                4 => 'Community',
+                5 => 'Pharmacy Database',
+            ];
             // manipulate records
             foreach ($results as $key => $data) {
                 $data['applied_filters'] = json_decode($data['applied_filters']);
@@ -107,6 +117,8 @@ class SavedFilterController extends Controller
                 if ($data['newsletter_channel']) {
                     $data['newsletter_channel'] = json_decode($data['newsletter_channel']);
                 }
+                
+                $data['contact_type'] = $mapContact[$data['contact_type_id']];
             }
 
             foreach ($sort as $value) {
@@ -191,7 +203,7 @@ class SavedFilterController extends Controller
     {
         $data = $request->validate([
             'filter_name' => 'required|string|max:255',
-            'applied_filters' => 'required',
+            'applied_filters' => 'nullable',
             'contact_type' => 'required|in:pharmacy-database,community',
             'is_frequence' => 'nullable|boolean',
             'is_apply_freq' => 'nullable|boolean',
@@ -208,9 +220,11 @@ class SavedFilterController extends Controller
         $baseQuery = Contacts::where('contact_type_id', $contact_type[$contact])
         ->where('contacts.is_deleted', false);
         
-           foreach ($request->applied_filters as $key => $filter) {
-            FilterHelper::getFilterQuery($baseQuery, $filter);
-        }   
+        if ($request->filled('applied_filters') && $request->applied_filters != '-') {
+            foreach ($request->applied_filters as $key => $filter) {
+                FilterHelper::getFilterQuery($baseQuery, $filter);
+            }
+        } 
 
         try {
             $amount_of_contacts = $baseQuery->count();
@@ -221,8 +235,10 @@ class SavedFilterController extends Controller
         try {
             $data['contact_type_id'] = $contact_type[$contact];
             $data['amount_of_contacts'] = $amount_of_contacts;
-            if (isset($data['applied_filters'])) {
+            if (isset($data['applied_filters']) && $data['applied_filters'] != '-') {
                 $data['applied_filters'] = json_encode($data['applied_filters']);
+            }else{
+                $data['applied_filters'] = null;
             }
             if (isset($data['frequency_cap'])) {
                 $data['frequency_cap'] = json_encode($data['frequency_cap']);
@@ -235,8 +251,7 @@ class SavedFilterController extends Controller
 
             return $this->successResponse($result, 'New filter saved', 200);  
         } catch (\Exception $e) {
-           // return $this->errorResponse('Failed to save new filter', 400);
-           return $this->errorResponse($e, 400);  
+            return $this->errorResponse('Failed to save new filter', 400);  
         }
     }
 
@@ -258,14 +273,18 @@ class SavedFilterController extends Controller
                 $baseQuery = Contacts::where('contact_type_id', $saved_fitler->contact_type_id)
                 ->where('contacts.is_deleted', false);
                 
-                foreach ($request->applied_filters as $key => $filter) {
-                    FilterHelper::getFilterQuery($baseQuery, $filter);
+                if ($request->filled('applied_filters') && $request->applied_filters != '-') {
+                    foreach ($request->applied_filters as $key => $filter) {
+                        FilterHelper::getFilterQuery($baseQuery, $filter);
+                    }
                 }
 
                 $amount_of_contacts = $baseQuery->count();
                 $data['amount_of_contacts'] = $amount_of_contacts;
-                if (isset($data['applied_filters'])) {
+                if (isset($data['applied_filters']) && $data['applied_filters'] != '-') {
                     $data['applied_filters'] = json_encode($data['applied_filters']);
+                }else{
+                    $data['applied_filters'] = null;
                 }
             }
 

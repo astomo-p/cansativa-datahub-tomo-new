@@ -2,8 +2,9 @@
 
 namespace Modules\NewContactData\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
 // use Modules\NewContactData\Database\Factories\ContactsFactory;
 
 class Contacts extends Model
@@ -13,24 +14,39 @@ class Contacts extends Model
     /**
      * The attributes that are mass assignable.
      */
-    protected $fillable = ['contact_name', 'phone_no', 'last_message_at', 'contact_type_id', 'created_date', 'created_by', 'updated_date', 'updated_by'];
+    protected $guarded = ['files'];
 
-     /**
+    /**
      * Indicates if the model should be timestamped.
      *
      * @var bool
      */
     public $timestamps = true;
+
     const CREATED_AT = 'created_date';
+
     const UPDATED_AT = 'updated_date';
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'whatsapp_subscription' => 'boolean',
+        'temporary_whatsapp_subscription' => 'boolean',
+    ];
 
     public function updateLastMessageAt($timestamp = null)
     {
         $this->last_message_at = $timestamp ?? now();
+
         return $this->save();
     }
 
-     /** relation */
+    /** relation */
+    public function contactType()
+    {
+        return $this->belongsTo(ContactTypes::class, 'contact_type_id', 'id');
+    }
 
     public function pharmacyChilds()
     {
