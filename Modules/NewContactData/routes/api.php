@@ -10,7 +10,6 @@ use Modules\NewContactData\Http\Controllers\HistoryExportController;
 use Modules\NewContactData\Http\Controllers\WaTemplateAttributesController;
 
 Route::prefix('v1')->name('api.')->group(function () {
-    Route::post('datahub/b2c/data-type-importer',[FileProcessorController::class,'dataTypeImporter']);
     Route::post('datahub/b2c/export', [NewContactDataController::class, "exportData"]);
     Route::post('datahub/b2c/import', [NewContactDataController::class, "importData"]);
     Route::post('datahub/b2c/import/save', [NewContactDataController::class, "importSave"]);

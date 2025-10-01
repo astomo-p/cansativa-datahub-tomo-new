@@ -28,15 +28,19 @@ class HistoryExports extends Model
         'created_date'    => 'datetime',
     ];
 
+    protected $appends = ['row_no', 'saved_filter_name'];
+
     public function toArray()
     {
         return [
+            'row_no'             => $this->row_no,
             'id'                 => $this->id,
-            'name'               => $this->name ?? $this->contact_name,
-            'export_name'        => $this->name ?? $this->contact_name,
+            'name'               => $this->name,
+            'export_name'        => $this->name,
             'contact_type'       => $this->contact_type,
-            'applied_filters'     => $this->applied_filters,
-            'amount_of_contacts' => $this->amount_contacts,
+            'saved_filter_name'    => $this->saved_filter_name,
+            'applied_filters'    => $this->applied_filters,
+            'amount_of_contacts' => $this->amount_of_contacts,
             'export_to'          => $this->formatExportTo(),
             'created_date'       => $this->created_date,
         ];
@@ -65,8 +69,13 @@ class HistoryExports extends Model
         return $this->hasOne(SavedFilters::class, 'id', 'saved_filter_id');
     }
 
-    // protected static function newFactory(): HistoryExportsFactory
-    // {
-    //     // return HistoryExportsFactory::new();
-    // }
+    public function getRowNoAttribute($value)
+    {
+        return $this->attributes['row_no'] ?? null;
+    }
+
+    public function getSavedFilterNameAttribute()
+    {
+        return $this->savedFilter->filter_name ?? null;
+    }
 }

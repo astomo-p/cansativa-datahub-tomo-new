@@ -3,28 +3,47 @@
 namespace Modules\B2BContact\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessImport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Modules\AuditLog\Events\AuditLogged;
+use Modules\AuditLog\Models\AuditLogs;
+use Modules\AuditLog\Models\ContactLogs;
+use Modules\B2BContact\Helpers\FilterHelper;
+use Modules\B2BContact\Models\AccountKeyManagers;
 use Modules\B2BContact\Models\B2BContacts;
 use Modules\B2BContact\Models\B2BContactTypes;
 use Modules\B2BContact\Models\B2BFiles;
-use Modules\B2BContact\Models\ContactPersons;
+use Modules\B2BContact\Models\ColumnMappings;
+use Modules\B2BContact\Models\CommunityUsers;
+use Modules\B2BContact\Models\ContactField as B2BContactField;
+use Modules\B2BContact\Models\CountryCodes;
 use Modules\B2BContact\Models\HistoryExports;
 use Modules\B2BContact\Models\SavedFilters;
 use Modules\B2BContact\Services\B2BContactService;
 use Modules\B2BContact\Services\FileService;
-use Modules\B2BContact\Services\FilterService;
+use Modules\B2BContactAdjustment\Http\Controllers\B2BContactAdjustmentController;
+use Modules\Campaign\Models\CampaignContact;
+use Modules\NewContactData\Models\ContactField as B2CContactField;
+use Modules\NewContactData\Models\Contacts;
+use Modules\Whatsapp\Models\WhatsappChatTemplate;
 use Modules\WhatsappNewsletter\Models\WaNewsLetter;
 use Modules\WhatsappNewsletter\Services\FilterConfigService;
-use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Settings;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class B2BContactController extends Controller
 {
@@ -42,6 +61,8 @@ class B2BContactController extends Controller
     private $contact_pharmacy = null;
     private $contact_supplier = null;
     private $contact_general_newsletter = null;
+    private $contact_pharmacy_db = null;
+    private $contact_community = null;
     protected $file_service;
     protected $contact_service;
 
@@ -53,6 +74,8 @@ class B2BContactController extends Controller
         $this->contact_pharmacy = B2BContactTypes::where('contact_type_name', 'PHARMACY')->first();
         $this->contact_supplier = B2BContactTypes::where('contact_type_name', 'SUPPLIER')->first();
         $this->contact_general_newsletter = B2BContactTypes::where('contact_type_name', 'GENERAL NEWSLETTER')->first();
+        $this->contact_pharmacy_db = B2BContactTypes::where('contact_type_name', 'PHARMACY DATABASE')->first();
+        $this->contact_community = B2BContactTypes::where('contact_type_name', 'COMMUNITY')->first();
         $this->file_service = new FileService;
         $this->contact_service = new B2BContactService;
     }
@@ -77,6 +100,20 @@ class B2BContactController extends Controller
         return $this->successResponse($results, 'Contacts statistics retrived successfully', 200);
     }
     
+    public function getB2CMetricsData()
+    {
+        $results = [];
+        $total_contacts = Contacts::where('contacts.is_deleted', false)->count();
+        $new_contacts = Contacts::where('contacts.is_deleted', false)->where('created_date',  '>=', Carbon::now()->subDays(30))->count();
+
+        $results = [
+          'total_contacts' => $total_contacts,
+          'new_contacts' => $new_contacts,
+        ];
+
+        return $this->successResponse($results, 'Contacts statistics retrived successfully', 200);
+    }
+    
     /**
      * Get top five pharmacies.
      *
@@ -84,12 +121,12 @@ class B2BContactController extends Controller
      */
     public function topFiveAreaPharmacies(Request $request)
     {
-        $results = B2BContactTypes::find($this->contact_pharmacy->id)->contacts()
+        $results = B2BContacts::where('contact_type_id', $this->contact_pharmacy->id)
         ->selectRaw("contacts.post_code,COUNT(contacts.post_code) AS total_pharmacies")
         ->where('contacts.is_deleted', false)
         ->orderBy('total_pharmacies', 'desc')
         ->groupBy('contacts.post_code')
-        ->take(5)->get();
+        ->take(5)->get()->sortBy('post_code')->values();
 
         $res = [];
         foreach( $results as $result ){
@@ -108,7 +145,7 @@ class B2BContactController extends Controller
     public function topFivePurchasePharmacies(Request $request)
     {
        
-        $results = B2BContactTypes::find($this->contact_pharmacy->id)->contacts()
+        $results = B2BContacts::where('contact_type_id', $this->contact_pharmacy->id)
         ->select('contacts.contact_name','contacts.total_purchase')
         ->where('contacts.is_deleted', false)
         ->orderBy('total_purchase', 'desc')
@@ -132,58 +169,41 @@ class B2BContactController extends Controller
 
     public function topContactCardB2B(Request $request)
     {
+        $data = $request->validate([
+            'type' => 'required|in:pharmacies,suppliers,general-newsletter',
+        ]);
         $res = [];
-        if($request->type == 'pharmacies'){
-            $prev_month = date('m',strtotime('-1 Month'));
-            $current_month = date('m');
-            $prev_month_count = B2BContactTypes::find($this->contact_pharmacy->id)->contacts()
-            ->whereMonth('created_date', $prev_month)
-            ->count();
-
-            $current_month_count = B2BContactTypes::find($this->contact_pharmacy->id)->contacts()
-            ->whereMonth('created_date', $current_month)
-            ->count();
-
-            $diff =  $current_month_count - $prev_month_count;  
-            array_push($res, [
-                'total' => $current_month_count,
-                'delta' => $diff > 0 ? '+'.$diff : 0,
-            ]);
-        } else if($request->type == 'suppliers'){
-            $prev_month = date('m',strtotime('-1 Month'));
-            $current_month = date('m');
-            $prev_month_count = B2BContactTypes::find($this->contact_supplier->id)->contacts()
-            ->whereMonth('created_date', $prev_month)
-            ->count();
-            $current_month_count = B2BContactTypes::find($this->contact_supplier->id)->contacts()
-            ->whereMonth('created_date', $current_month)
-            ->count();
-            $diff =  $current_month_count - $prev_month_count;
-
-            array_push($res, [
-                'total' => $current_month_count,
-                'delta' => $diff > 0 ? '+'.$diff : 0,
-            ]);
-        } else if($request->type == 'general-newsletter'){
-            $prev_month = date('m',strtotime('-1 Month'));
-            $current_month = date('m');
-            $prev_month_count = B2BContactTypes::find($this->contact_general_newsletter->id)->contacts()
-            ->whereMonth('created_date', $prev_month)
-            ->count();
-            $current_month_count = B2BContactTypes::find($this->contact_general_newsletter->id)->contacts()
-            ->whereMonth('created_date', $current_month)
-            ->count();
-            $diff =  $current_month_count - $prev_month_count;
-
-            array_push($res, [
-                'total' => $current_month_count,
-                'delta' => $diff > 0 ? '+'.$diff : 0,
-            ]);
-        } else {
-            return $this->errorResponse('Invalid type',400);
+        switch ($data['type']) {
+            case 'pharmacies':
+                $contact_type_id = $this->contact_pharmacy->id;
+                break;
+            case 'suppliers':
+                $contact_type_id = $this->contact_supplier->id;
+                break;
+            case 'general-newsletter':
+                $contact_type_id = $this->contact_general_newsletter->id;
+                break;
+            default:
+                return $this->errorResponse('Invalid type',400);
+                break;
         }
+
+        $current_month = date('m');
+        $all_contacts = B2BContacts::where('contact_type_id', $contact_type_id)
+        ->where('is_deleted', false)
+        ->count();
+
+        $current_month_count = B2BContacts::where('contact_type_id', $contact_type_id)
+        ->whereMonth('created_date', $current_month)
+        ->where('is_deleted', false)
+        ->count();
+
+        array_push($res, [
+            'total' => $all_contacts,
+            'delta' => $current_month_count > 0 ? $current_month_count : 0,
+        ]);
             
-       return $this->successResponse($res,'Top contact card',200);
+        return $this->successResponse($res,'Top contact card',200);
 
 
     }
@@ -210,42 +230,39 @@ class B2BContactController extends Controller
             12 => 'December'
         ];
 
-        //pharmacy
-        $pharmacy = [];
-        for($i = 1; $i <= 12; $i++){
-            $pharmacy[$i] = B2BContactTypes::find($this->contact_pharmacy->id)->contacts()
-            ->whereMonth('created_date', $i)
-            ->whereYear('created_date', $now)
-            ->count();
-        }
+        $total_pharmacy = 0;
+        $total_supplier = 0;
+        $total_general_newsletter = 0;
         $pharmacy_result = [];
-        foreach($pharmacy as $key => $value){
-            $pharmacy_result[$months[$key]] = (int) $value;
-        }   
-        //supplier
-        $supplier = [];
-        for($i = 1; $i <= 12; $i++){
-            $supplier[$i] = B2BContactTypes::find($this->contact_supplier->id)->contacts()
-            ->whereMonth('created_date', $i)
-            ->whereYear('created_date', $now)
-            ->count();
-        }
         $supplier_result = [];
-        foreach($supplier as $key => $value){
-            $supplier_result[$months[$key]] = (int) $value;
-        }
-
-        //general newsletter
-        $general_newsletter = [];
-        for($i = 1; $i <= 12; $i++){
-            $general_newsletter[$i] = B2BContactTypes::find($this->contact_general_newsletter->id)->contacts()
-            ->whereMonth('created_date', $i)
-            ->whereYear('created_date', $now)
-            ->count();
-        }   
         $general_newsletter_result = [];
-        foreach($general_newsletter as $key => $value){
-            $general_newsletter_result[$months[$key]] = (int) $value;
+
+        $month = Carbon::now()->month;
+
+        for($i = 1; $i <= $month; $i++){
+            $count_pharmacy = B2BContacts::where('contact_type_id', $this->contact_pharmacy->id)
+                    ->whereMonth('created_date', $i)
+                    ->whereYear('created_date', $now)
+                    ->where('is_deleted', false)
+                    ->count();
+            $total_pharmacy = $total_pharmacy + $count_pharmacy;
+            $pharmacy_result[$months[$i]] = $total_pharmacy;
+
+            $count_supplier = B2BContacts::where('contact_type_id', $this->contact_supplier->id)
+                    ->whereMonth('created_date', $i)
+                    ->whereYear('created_date', $now)
+                    ->where('is_deleted', false)
+                    ->count();
+            $total_supplier = $total_supplier + $count_supplier;
+            $supplier_result[$months[$i]] = $total_supplier;
+
+            $count_general_newsletter = B2BContacts::where('contact_type_id', $this->contact_general_newsletter->id)
+                    ->whereMonth('created_date', $i)
+                    ->whereYear('created_date', $now)
+                    ->where('is_deleted', false)
+                    ->count();
+            $total_general_newsletter = $total_general_newsletter + $count_general_newsletter;
+            $general_newsletter_result[$months[$i]] = $total_general_newsletter;
         }
 
         $res = [
@@ -253,70 +270,34 @@ class B2BContactController extends Controller
           'Suppliers' => $supplier_result,
           'General Newsletter' => $general_newsletter_result
         ];
-       return $this->successResponse($res,'Contact growth',200);
+
+       return $this->successResponse($res, 'Contact growth', 200);
     }
 
     public function topFivePharmaciesByDatabase(Request $request)
     {
+        $pharmacyDb = Contacts::select('contact_parent_id', DB::raw('COUNT(*) as pharmacy_db_count'))
+            ->whereNotNull('contact_parent_id')
+            ->where('is_deleted', false)
+            ->groupBy('contact_parent_id')
+            ->orderByDesc('pharmacy_db_count')
+            ->limit(5)
+            ->get()
+            ->keyBy('contact_parent_id');
 
-        $childs = B2BContacts::whereNotNull('contact_parent_id')
-        ->selectRaw('COUNT(*) as total, contact_parent_id')
-        ->where('is_deleted', false)
-        ->where('contact_type_id', $this->contact_pharmacy->id)
-        ->groupBy('contact_parent_id')
-        ->orderBy('total', 'desc')
-        ->take(5)
-        ->get();
-
-        $parent_id = $childs->map(function($element){
-            return $element->contact_parent_id;
-        });
-
-        $parents = B2BContacts::where('contact_parent_id', null)
-        ->orWhere('contact_parent_id', 0)
-        ->where('is_deleted', false)
-        ->whereIn('id',$parent_id)
-        ->select('id', 'contact_name', 'post_code')
-        ->get();
-
-        $res = [];
-
-        foreach($parents as $parent){
-          foreach($childs as $child){
-            if($child->contact_parent_id == $parent->id){
-                array_push($res,[
-                    'name'=> $parent->contact_name,
-                    'post_code'=> $parent->post_code,
-                    'database_size'=> $child->total
-                ]);
-            }
-          }
-        }
+        $result = B2BContacts::whereIn('id', $pharmacyDb->keys())
+            ->where('is_deleted', false)
+            ->select('id', 'contact_name')
+            ->get()
+            ->map(function ($pharmacy) use ($pharmacyDb) {
+                return [
+                    'id' => $pharmacy->id,
+                    'name' => $pharmacy->contact_name,
+                    'total_contacts' => $pharmacyDb[$pharmacy->id]->pharmacy_db_count,
+                ];
+            });
        
-       return $this->successResponse($res,'Top five pharmacies by user database',200);
-    }
-
-    /**
-     * Upload file to MinIO.
-     */
-    public function minioUpload(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048', 
-        ]);
-
-        $file = $request->file('file');
-
-        $path = 'uploads/contact-data/';
-
-        try {
-            Storage::disk('minio')->put($path, file_get_contents($file));
-
-            return $this->successResponse(['path' => $path], 'File uploaded successfully', 200);
-        } catch (\Exception $e) {
-            return $this->errorResponse('Error', 500, 'Failed to upload: ' . $e->getMessage());
-        }
-        
+       return $this->successResponse($result,'Top five pharmacies by user database',200);
     }
 
     public function uploadFile(Request $request)
@@ -363,6 +344,9 @@ class B2BContactController extends Controller
             'export_to' => 'required|in:xlsx,email,whatsapp',
             'contact_type' => 'required|in:pharmacy,supplier,general-newsletter',
             'applied_filters' => 'nullable',
+            'newsletter_channel' => 'nullable|in:email,whatsapp',
+            'frequency_cap' => 'nullable',
+            'apply_for_all_channel' => 'nullable|boolean',
         ]);
 
         $contact = $data['contact_type'];
@@ -371,247 +355,473 @@ class B2BContactController extends Controller
             'supplier'=>$this->contact_supplier->id,
             'general-newsletter'=>$this->contact_general_newsletter->id
         ];
+
+        $matchContact = [
+            'pharmacy'=> 'Pharmacies',
+            'supplier'=> 'Suppliers',
+            'general-newsletter'=> 'General Newsletter'
+        ];
+        $contactFilter = 'B2B - '.$matchContact[$contact];
         
-        // filter last_purchase_date not done
-        $filteredQuery = B2BContactTypes::find($contact_type[$contact])
-        ->contacts()
+        $baseQuery = B2BContacts::with(['customFieldValues.contactField'])
+        ->where('contact_type_id', $contact_type[$contact])
         ->where('contacts.is_deleted', false);
+        
+        if ($request->has('applied_filters')) {
+            $checkDefaultColumn = array_merge(
+                ColumnMappings::where('contact_type_id', 1)->pluck('field_name')->toArray(),
+                ['subscription', 'contact_type', 'contactType', 'exportType']
+            );
 
-        // filter_keys other than city, postcode, country
-        $filter_keys = ['amount_purchase', 'total_purchase', 'average_purchase', 'created_date'];
-        if ($request->input('applied_filters.include')) {
-            $included_filter = $request->input('applied_filters.include');
-
-            foreach ($included_filter as $key => $filter) {
-                $params = explode(',', $filter);
-                if (in_array($key, $filter_keys)) {
-                    $filteredQuery->whereBetween($key, $params);
-                }else if ($key == 'last_purchase_date') {
-                    $filteredQuery->where('last_purchase_date', '>', Carbon::now()->subDays($filter));
+            foreach ($request->applied_filters as $key => $filter) {
+                if (in_array($filter['key'], $checkDefaultColumn)) {
+                    FilterHelper::getFilterQuery($baseQuery, $filter);
                 }else{
-                    // filter city, postcode, country
-                    $filteredQuery->whereIn($key, $params);
+                    // custom field from contacts
+                    $baseQuery->whereHas('customFieldValues', function ($queryContactField) use ($filter) {
+                        $queryContactField->whereHas('contactField', function ($queryFieldValue) use ($filter) {
+                            $filter['items'] = [$filter['key']];
+                            $filter['key'] = 'field_name';
+                            FilterHelper::getFilterQuery($queryFieldValue, $filter);
+                        });
+
+                        $filter['key'] = 'value';
+                        FilterHelper::getFilterQuery($queryContactField, $filter);
+                    });
                 }
             }
         }
 
-        if ($request->input('applied_filters.exclude')) {
-            $exclude_filter = $request->input('applied_filters.exclude');
-            foreach ($exclude_filter as $key => $filter) {
-                $params = explode(',', $filter);
-                if (in_array($key, $filter_keys)) {
-                    $filteredQuery->whereNotBetween($key, $params);
-                }else if ($key == 'last_purchase_date') {
-                    $filteredQuery->whereNot('last_purchase_date', '>', Carbon::now()->subDays($filter));
-                }else{
-                    $filteredQuery->whereNotIn($key, $params);
-                }
-            }
-        };
-
-        $count = $filteredQuery->count();
+        try {
+            $count = $baseQuery->count();
+        } catch (\Exception $e) {
+            Log::error('failed to export data: ', [$e->getMessage()]);
+            return $this->errorResponse('Error', 400, 'Failed to export data. Invalid filter.');
+        }
 
         $limit = 25;
         $chunk_size = ceil($count / $limit);
         $chunk = 0;
 
+        Settings::setLocale('de_DE'); 
         $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Result');
         while($chunk < $chunk_size){
-            $data = $filteredQuery
+            $data = $baseQuery
                     ->skip($chunk * $limit)
                     ->take($limit)
                     ->get();
 
-            $sheet = $chunk == 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
+            // Collect unique custom field keys
+            $customKeys = [];
+            foreach ($data as $rowCustom) {
+                if (!empty($rowCustom->custom_fields)) {
+                    foreach ($rowCustom->custom_fields as $key => $value) {
+                        $customKeys[] = $key;
+                    }
+                }
+            }
+            $customKeys = array_unique($customKeys);
 
             if ($contact == 'general-newsletter') {
-                $sheet->setCellValue('A1', 'Full Name');
-                $sheet->setCellValue('B1', 'Email'); 
-                $sheet->setCellValue('C1', 'Phone Number');
-                $sheet->setCellValue('D1', 'Whatsapp Subscription');
-                $sheet->setCellValue('E1', 'Email Subscription');
-                $sheet->setCellValue('F1', 'Created At');
-                $rows = 2;
+                $resultHeader = [
+                    'No', 'Full Name', 'Email', 'Phone Number', 'Whatsapp Subscription','Email Subscription', 'Created At'
+                ];
 
-                foreach($data as $row){
-                    $sheet->setCellValue('A' . $rows, $row['contact_name']);
-                    $sheet->setCellValue('B' . $rows, $row['email']);
-                    $sheet->setCellValue('C' . $rows, $row['phone_no']);
-                    $sheet->setCellValue('D' . $rows, $row['whatsapp_subscription'] ? 'Yes' : 'No');
-                    $sheet->setCellValue('E' . $rows, $row['email_subscription'] ? 'Yes' : 'No');
-                    $sheet->setCellValue('F' . $rows, date('d F Y',strtotime($row['created_date'])));
-                    $rows++;
+                // Merge in custom fields at the end
+                $headers = array_merge($resultHeader, $customKeys);
+
+                // === 2. Write headers ===
+                $col = 'A';
+                foreach ($headers as $header) {
+                    $sheet->setCellValue($col . '1', $header);
+                    $col++;
+                }
+
+                // Merge in custom fields at the end
+                $headers = array_merge($headers, $customKeys);
+
+                // === 2. Write headers ===
+                $col = 'A';
+                foreach ($headers as $header) {
+                    $sheet->setCellValue($col . '1', $header);
+                    $col++;
+                }
+
+                // === 3. Write rows ===
+                $rowNum = ($chunk * $limit) + 2;
+                $no = ($chunk * $limit) + 1;
+
+                foreach ($data as $row) {
+                    $phoneNo = '';
+                    if ($row['phone_no']) {
+                        $phoneNo = $row['country_code'] ? $row['country_code'].$row['phone_no'] : ''.$row['phone_no'];
+                        $phoneNo = '['.$phoneNo.']';
+                    }
+
+                    $record = [
+                        'No' => $no++,
+                        'Contact Name' => $row['contact_name'] ?? '',
+                        'Email' => $row['email'] ?? '',
+                        'Phone Number' => $phoneNo ?? '',
+                        'Whatsapp Subscription' => $row['whatsapp_subscription'] ?? false,
+                        'Email Subscription' => $row['email_subscription'] ?? false,
+                        'Created At' => $row['created_date'] ?? '',
+                    ];
+
+
+                    // Merge in custom fields
+                    foreach ($customKeys as $key) {
+                        $record[$key] = $row['custom_fields'][$key] ?? '';
+                    }
+
+                    // Write the row with formatting
+                    $this->writeRow($sheet, $rowNum, $record, $headers);
+                    $rowNum++;
                 }
             }
             
             if($contact == 'supplier'){
-                $sheet->setCellValue('A1', 'Pharmacy Name');
-                $sheet->setCellValue('B1', 'Pharmacy Number');
-                $sheet->setCellValue('C1', 'VAT ID');
-                $sheet->setCellValue('D1', 'Address');
-                $sheet->setCellValue('E1', 'Postcode');
-                $sheet->setCellValue('F1', 'City');
-                $sheet->setCellValue('G1', 'Country');
-                $sheet->setCellValue('H1', 'State');
-                $sheet->setCellValue('I1', 'Contact Person'); 
-                $sheet->setCellValue('J1', 'Email');
-                $sheet->setCellValue('K1', 'Phone Number');
-                $sheet->setCellValue('L1', 'Amount of Purchase');
-                $sheet->setCellValue('M1', 'Average of Purchase');
-                $sheet->setCellValue('N1', 'Total Purchase');
-                $sheet->setCellValue('O1', 'Last Purchase Date');
-                $sheet->setCellValue('P1', 'Created At');
-                $rows = 2;
-                foreach($data as $row){
-                    $sheet->setCellValue('A' . $rows, $row['contact_name']);
-                    $sheet->setCellValue('B' . $rows, $row['contact_no']);
-                    $sheet->setCellValue('C' . $rows, $row['vat_id']);
-                    $sheet->setCellValue('D' . $rows, $row['address']);
-                    $sheet->setCellValue('E' . $rows, $row['post_code']);
-                    $sheet->setCellValue('F' . $rows, $row['city']);
-                    $sheet->setCellValue('G' . $rows, $row['country']);
-                    $sheet->setCellValue('H' . $rows, $row['state']);
-                    $sheet->setCellValue('I' . $rows, $row['contact_person']);
-                    $sheet->setCellValue('J' . $rows, $row['email']);
-                    $sheet->setCellValue('K' . $rows, $row['phone_no']);
-                    $sheet->setCellValue('L' . $rows, $row['amount_purchase']);
-                    $sheet->setCellValue('M' . $rows, $row['average_purchase']);
-                    $sheet->setCellValue('N' . $rows, $row['total_purchase']);
-                    $sheet->setCellValue('O' . $rows, date('d F Y',strtotime($row['last_purchase_date'])));
-                    $sheet->setCellValue('P' . $rows, date('d F Y',strtotime($row['created_date'])));
-                    
-                    $rows++;
+                $headers = [
+                    'No',
+                    'Company Name',
+                    'VAT ID',
+                    'Address',
+                    'Postcode',
+                    'City',
+                    'Country',
+                    'Contact Person',
+                    'Email',
+                    'Phone Number',
+                    'Amount of Purchase',
+                    'Average of Purchase',
+                    'Total Purchase',
+                    'Last Purchase Date',
+                    'Whatsapp Subscription',
+                    'Email Subscription',
+                    'Created At',
+                ];
+
+                // Merge in custom fields at the end
+                $headers = array_merge($headers, $customKeys);
+
+                // === 2. Write headers ===
+                $col = 'A';
+                foreach ($headers as $header) {
+                    $sheet->setCellValue($col . '1', $header);
+                    $col++;
+                }
+
+                // === 3. Write rows ===
+                $rowNum = ($chunk * $limit) + 2;
+                $no = ($chunk * $limit) + 1;
+
+                foreach ($data as $row) {
+                    $phoneNo = '';
+                    if ($row['phone_no']) {
+                        $phoneNo = $row['country_code'] ? $row['country_code'].$row['phone_no'] : ''.$row['phone_no'];
+                        $phoneNo = '['.$phoneNo.']';
+                    }
+
+                    $record = [
+                        'No' => $no++,
+                        'Contact Name' => $row['contact_name'] ?? '',
+                        'VAT ID' => $row['vat_id'] ?? '',
+                        'Address' => $row['address'] ?? '',
+                        'Postcode' => $row['post_code'] ?? '',
+                        'City' => $row['city'] ?? '',
+                        'Country' => $row['country'] ?? '',
+                        'Contact Person' => $row['contact_person'] ?? '',
+                        'Email' => $row['email'] ?? '',
+                        'Phone Number' => $phoneNo ?? '',
+                        'Amount of Purchase' => $row['amount_purchase'] ?? 0,
+                        'Average of Purchase' => $row['average_purchase'] ?? 0,
+                        'Total Purchase' => $row['total_purchase'] ?? 0,
+                        'Last Purchase Date' => $row['last_purchase_date'] ?? '',
+                        'Whatsapp Subscription' => $row['whatsapp_subscription'] ?? false,
+                        'Email Subscription' => $row['email_subscription'] ?? false,
+                        'Created At' => $row['created_date'] ?? '',
+                    ];
+
+                    // Merge in custom fields
+                    foreach ($customKeys as $key) {
+                        $record[$key] = $row['custom_fields'][$key] ?? '';
+                    }
+
+                    // Write the row with formatting
+                    $this->writeRow($sheet, $rowNum, $record, $headers);
+                    $rowNum++;
                 }
             }
             
             if($contact == 'pharmacy'){
-                $sheet->setCellValue('A1', 'Pharmacy Name');
-                $sheet->setCellValue('B1', 'Pharmacy Number');
-                $sheet->setCellValue('C1', 'Address');
-                $sheet->setCellValue('D1', 'Postcode');
-                $sheet->setCellValue('E1', 'City');
-                $sheet->setCellValue('F1', 'Country');
-                $sheet->setCellValue('G1', 'State');
-                $sheet->setCellValue('H1', 'Contact Person'); 
-                $sheet->setCellValue('I1', 'Email');
-                $sheet->setCellValue('J1', 'Phone Number');
-                $sheet->setCellValue('K1', 'Amount of Purchase');
-                $sheet->setCellValue('L1', 'Average of Purchase');
-                $sheet->setCellValue('M1', 'Total Purchase');
-                $sheet->setCellValue('N1', 'Last Purchase Date');
-                $sheet->setCellValue('O1', 'Created At');
-                $rows = 2;
-                foreach($data as $row){
-                    $sheet->setCellValue('A' . $rows, $row['contact_name']);
-                    $sheet->setCellValue('B' . $rows, $row['contact_no']);
-                    $sheet->setCellValue('C' . $rows, $row['address']);
-                    $sheet->setCellValue('D' . $rows, $row['post_code']);
-                    $sheet->setCellValue('E' . $rows, $row['city']);
-                    $sheet->setCellValue('F' . $rows, $row['country']);
-                    $sheet->setCellValue('G' . $rows, $row['state']);
-                    $sheet->setCellValue('H' . $rows, $row['contact_person']);
-                    $sheet->setCellValue('I' . $rows, $row['email']);
-                    $sheet->setCellValue('J' . $rows, $row['phone_no']);
-                    $sheet->setCellValue('K' . $rows, $row['amount_purchase']);
-                    $sheet->setCellValue('L' . $rows, $row['average_purchase']);
-                    $sheet->setCellValue('M' . $rows, $row['total_purchase']);
-                    $sheet->setCellValue('N' . $rows, date('d F Y',strtotime($row['last_purchase_date'])));
-                    $sheet->setCellValue('O' . $rows, date('d F Y',strtotime($row['created_date'])));
-                    
-                    $rows++;
+                // === 1. Define headers (base + custom) ===
+                $headers = [
+                    'No',
+                    'Contact Name',
+                    'Contact No',
+                    'Address',
+                    'Postcode',
+                    'City',
+                    'Country',
+                    'Contact Person',
+                    'Email',
+                    'Phone Number',
+                    'Amount of Purchase',
+                    'Average of Purchase',
+                    'Total Purchase',
+                    'Last Purchase Date',
+                    'Whatsapp Subscription',
+                    'Email Subscription',
+                    'Created At',
+                ];
+
+                // Merge in custom fields at the end
+                $headers = array_merge($headers, $customKeys);
+
+                // === 2. Write headers ===
+                $col = 'A';
+                foreach ($headers as $header) {
+                    $sheet->setCellValue($col . '1', $header);
+                    $col++;
+                }
+
+                // === 3. Write rows ===
+                $rowNum = ($chunk * $limit) + 2;
+                $no = ($chunk * $limit) + 1;
+
+                foreach ($data as $row) {
+                    $phoneNo = '';
+                    if ($row['phone_no']) {
+                        $phoneNo = $row['country_code'] ? $row['country_code'].$row['phone_no'] : ''.$row['phone_no'];
+                        $phoneNo = '['.$phoneNo.']';
+                    }
+
+                    $record = [
+                        'No' => $no++,
+                        'Contact Name' => $row['contact_name'] ?? '',
+                        'Contact No' => $row['contact_no'] ?? '',
+                        'Address' => $row['address'] ?? '',
+                        'Postcode' => $row['post_code'] ?? '',
+                        'City' => $row['city'] ?? '',
+                        'Country' => $row['country'] ?? '',
+                        'Contact Person' => $row['contact_person'] ?? '',
+                        'Email' => $row['email'] ?? '',
+                        'Phone Number' => $phoneNo ?? '',
+                        'Amount of Purchase' => $row['amount_purchase'] ?? 0,
+                        'Average of Purchase' => $row['average_purchase'] ?? 0,
+                        'Total Purchase' => $row['total_purchase'] ?? 0,
+                        'Last Purchase Date' => $row['last_purchase_date'] ?? '',
+                        'Whatsapp Subscription' => $row['whatsapp_subscription'] ?? false,
+                        'Email Subscription' => $row['email_subscription'] ?? false,
+                        'Created At' => $row['created_date'] ?? '',
+                    ];
+
+                    // Merge in custom fields
+                    foreach ($customKeys as $key) {
+                        $record[$key] = $row['custom_fields'][$key] ?? '';
+                    }
+
+                    // Write the row with formatting
+                    $this->writeRow($sheet, $rowNum, $record, $headers);
+                    $rowNum++;
                 }
             }
 
             $chunk++;
         }
+
+        $highestColumn = $sheet->getHighestColumn();
+        foreach (range('A', $highestColumn) as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $sheet->getStyle("A1:{$highestColumn}1")->applyFromArray([
+            'font' => [
+                'bold' => true,
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => 'CCCCCC']
+            ],
+            'alignment' => [
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => '000000']
+                ]
+            ]
+        ]);
+
+        $filtersSheet = $spreadsheet->createSheet();
+        $filtersSheet->setTitle('Filters');
+
+        // Metadata
+        $info = [
+            ['Contact Type:', $contactFilter],
+            ['Saved Filter Used:', '-'],
+            ['Export Date:', now()->format('d.m.Y H:i')],
+        ];
+
+        $row = 1;
+        foreach ($info as $item) {
+            $filtersSheet->setCellValue("A{$row}", $item[0]);
+            $filtersSheet->setCellValue("B{$row}", $item[1]);
+            $filtersSheet->getStyle("B{$row}")->getFont()->setBold(true);
+            $row++;
+        }
+
+        $row++; // Empty line
+
+        // Table headers
+        $filtersSheet->setCellValue("A{$row}", 'Filter Category');
+        $filtersSheet->setCellValue("B{$row}", 'Selected Filters');
+        $filtersSheet->getStyle("A{$row}:B{$row}")->applyFromArray([
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => 'CCCCCC']
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                ]
+            ]
+        ]);
+        $row++;
+
+        // Table filter data
+        if ($request->has('applied_filters')) {
+            $filters = FilterHelper::formatFilterForExportExcel($request->applied_filters);
+            foreach ($filters as $fill) {
+                $filtersSheet->setCellValue("A{$row}", $fill['category']);
+                $filtersSheet->setCellValue("B{$row}", $fill['value']);
+                $filtersSheet->getStyle("A{$row}:B{$row}")->applyFromArray([
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                        ]
+                    ],
+                ]);
+                $row++;
+            }            
+        }else{
+            $filtersSheet->setCellValue("A{$row}", '-');
+            $filtersSheet->setCellValue("B{$row}", '-');
+        }
+
+        // Auto-size
+        foreach (range('A', 'B') as $col) {
+            $filtersSheet->getColumnDimension($col)->setAutoSize(true);
+        }
     
-        $filename = date('YmdHis') . "-" . $contact . ".xlsx";
+        $filename ="XLSX-Export.xlsx";
         $writer = new Xlsx($spreadsheet); 
-        $writer->save($filename);
-
-        
-        $brevo_id = 0;
-
-        // if($request->get('export_to') == 'whatsapp'){
-        //     $recipient = B2BContacts::where('user_id',$request->get('user_id'))->get();
-        //     try {
-        //         $endpoint = env('WHATSAPP_API_URL') . '/' . env('WHATSAPP_PHONE_NUMBER_ID') . '/messages';
-        //         $response = Http::withToken(env('WHATSAPP_API_TOKEN'))
-        //         ->post($endpoint, [
-        //             'messaging_product' => 'whatsapp',
-        //             'recipient_type' => 'individual',
-        //             'to' => $recipient[0]->phone_no,
-        //             'type' => 'text',
-        //             'text' => [
-        //                 'body' => 'Please download your report here:' . url('public/' . $filename)
-        //             ]
-        //         ]);
-        //         $responseData = $response->throw();
-        //     }catch(\Exception $e){
-        //         return $this->errorResponse('Error', 400, 'Failed to send whatsapp: ' . $e->getMessage());
-        //     }
-        // }
-          
-        // if($request->get('export_to') == 'email'){
-        //     $recipient = B2BContacts::where('user_id',$request->get('user_id'))->get();
-
-        //     try {
-        //         $campaign = Http::withHeaders([
-        //             'api-key' => env('BREVO_API_KEY'),
-        //             'content-type' => 'application/json',
-        //             'accept' => 'application/json'
-        //         ])->post(env('BREVO_API_URL') . '/smtp/email', [
-        //             'name' => 'Contact Data Export',
-        //             'subject' => 'Your Contact Data Report is Ready',
-        //             'sender' => [
-        //                 'name' => 'Cansativa',
-        //                 'email' => env('BREVO_SENDER_EMAIL','siroja@kemang.sg'),
-        //             ],
-        //             'htmlContent' => "<html><body><h1>Please download your report</h1><p><a href='".url('public/' . $filename)."'>Here</a></p></body></html>",
-        //             'to' => [
-        //                 [
-        //                     'email' => $recipient[0]->email
-        //                 ]
-        //             ]
-        //         ]);
-
-        //         $campaign->throw();
-        //         $brevo_id = $campaign;
-
-        //         /* $campaign_id = $campaign->json()['id'];
-
-        //         $sent = Http::withHeaders([
-        //             'api-key' => env('BREVO_API_KEY'),
-        //             'content-type' => 'application/json',
-        //             'accept' => 'application/json'
-        //         ])->post(env('BREVO_API_URL') . '/emailCampaigns/' . $campaign_id . '/sendNow',[
-        //             'emailTo' => ['tomo@kemang.sg'], 
-        //         ]);   */
-
-        //     }catch(\Exception $e){
-        //         return $this->errorResponse('Error', 400, 'Failed to send email: ' . $e->getMessage());
-        //     }
-        // }
+        // Save to a temporary file
+        $tempFile = tempnam(sys_get_temp_dir(), 'export_');
+        $writer->save($tempFile);
         
         HistoryExports::insert([
-            'name' => $request->name,
-            'contact_type_id' => $contact_type[$contact],
-            'applied_filters' => json_encode($request->applied_filters),
+            'name' => 'XLSX-Export',
+            'contact_type' => $contact,
+            'applied_filters' => $request->applied_filters ? json_encode($request->applied_filters) : null,
             'export_to'=> $request->get('export_to','.xlsx'),
             'amount_of_contacts' => $count,
             'created_date' => date('Y-m-d H:i:s')
         ]);
 
-        return $this->successResponse([
-            "filename"=>url('public/' . $filename)
-        ],'successfully exported file',200);
+        // Convert temp file path to UploadedFile
+        $uploadedFile = new UploadedFile(
+            $tempFile,                     // full path
+            basename($filename),           // original filename
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // MIME type
+            null,                          // size (optional, will be auto-detected)
+            true                           // mark as test mode (no need for real HTTP upload)
+        );
+
+        $b2bController = new B2BContactAdjustmentController();
+        $uploadRequest = new Request();
+        $uploadRequest->files->set('file', $uploadedFile);
+
+        $uploadResponse = $b2bController->handleFileUpload($uploadRequest);
+        $uploadData = json_decode($uploadResponse->getContent(), true);
+
+        if ($uploadResponse->getStatusCode() !== 200) {
+            return $this->errorResponse(
+                'Failed to upload file: ' . ($uploadData['message'] ?? 'Unknown error'),
+                400
+            );
+        }
+
+        $minioBaseUrl = env('MINIO_ENDPOINT');        
+        $results['file_url'] = $minioBaseUrl.'/datahub/'.$uploadData['minio_path'];
+
+        switch ($contact) {
+            case 'pharmacy':
+                $moduleLog = AuditLogs::MODULE_PHARMACY;
+                $moduleName = 'Pharmacy';
+                break;
+            case 'supplier':
+                $moduleLog = AuditLogs::MODULE_SUPPLIER;
+                $moduleName = 'Supplier';
+                break;
+            case 'general-newsletter':
+                $moduleLog = AuditLogs::MODULE_GENERAL_NEWSLETTER;
+                $moduleName = 'General Newsletter';
+                break;
+            default:
+                break;
+        }
+        event(new AuditLogged($moduleLog, 'Export as xlsx'));
+
+        return $this->successResponse($results, 'exported data', 200);
+    }
+
+    function writeRow($sheet, int $rowNum, array $record, array $allHeaders)
+    {
+        $col = 'A';
+        foreach ($allHeaders as $header) {
+            $value = $record[$header] ?? '';
+
+            // Dates
+            if (in_array($header, ['Last Purchase Date', 'Created At'])) {
+                if (!empty($value)) {
+                    $timestamp = strtotime($value);
+                    $value = \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($timestamp);
+                    $sheet->getStyle("{$col}{$rowNum}")
+                        ->getNumberFormat()
+                        ->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+                } else {
+                    $value = '';
+                }
+            }
+
+            // Floats with currency formatting
+            if (in_array($header, ['Average of Purchase', 'Total Purchase'])) {
+                $value = (float) $value;
+                $sheet->getStyle("{$col}{$rowNum}")
+                    ->getNumberFormat()
+                    ->setFormatCode('#,##0.00 [$€-407]'); // European format with €
+            }
+
+            // Booleans
+            if (in_array($header, ['Whatsapp Subscription', 'Email Subscription'])) {
+                $value = !empty($value) ? 'Yes' : 'No';
+            }
+
+            $sheet->setCellValue("{$col}{$rowNum}", $value);
+            $col++;
+        }
     }
 
     public function exportToNewsletter(Request $request)
     {
         $validated = $request->validate([
             'campaignName' => 'required|string|max:255',
-            'contactTypeId' => 'required|integer|exists:contact_types,id',
+            'contactTypeId' => 'required|integer',
         ]);
 
         $contactType = B2BContactTypes::where('id', $validated['contactTypeId'])->firstOrFail();
@@ -652,95 +862,74 @@ class B2BContactController extends Controller
 
     public function previewExportContacts(Request $request)
     {
-        $validated = $request->validate([
-            'contact_type_id' => 'required|integer|exists:contact_types,id',
-            'applied_filters' => 'required',
-        ]);
+        $sort = [];
+        if ($request->has('sort')) {
+            // sorting example => { sort : email.asc,contact_name.asc,post_code.desc }
+            $allowed_sort = ['contact_name', 'contact_no', 'post_code', 'city', 'country', 'contact_person', 'email', 
+            'phone_no', 'amount_purchase','average_purchase', 'total_purchase', 'last_purchase_date', 'created_date'];
 
-        // default pagination setup
-        $sort_column = $request->get('sort') == '' ? 'contacts.id' :  'contacts.' . explode('-',$request->get('sort'))[0];
-        $sort_direction = $request->get('sort') == '' ? 'asc' :  explode('-',$request->get('sort'))[1];;
+            $sort_column = explode(',', $request->get('sort'));
+            foreach ($sort_column as $key => $value) {
+                $sort[] = explode('.', $value);
+                // if sort column not included in array and not ascending or descending
+                if (!in_array($sort[$key][0], $allowed_sort) || ($sort[$key][1] !== 'asc' && $sort[$key][1] !== 'desc')) {
+                    return $this->errorResponse('Error', 400, 'Failed to get pharmacy data. Invalid sorting column.');
+                }
+            }
+        }
+
         $start = $request->get('start', 0);
         $length = $request->get('length', 10);
         $search = $request->get('search');
         
-        $filteredQuery = B2BContactTypes::find($validated['contact_type_id'])->contacts()
+        $baseQuery = B2BContacts::where('contact_type_id', $this->contact_pharmacy->id)
         ->where('contacts.is_deleted', false);
-
-        // filter_keys other than city, postcode, country
-        $filter_keys = ['amount_purchase', 'total_purchase', 'average_purchase', 'created_date'];
-        if (isset($validated['applied_filters']['include'])) {
-            $included_filter = $validated['applied_filters']['include'];
-
-            foreach ($included_filter as $key => $filter) {
-                $params = explode(',', $filter);
-                if (in_array($key, $filter_keys)) {
-                    $filteredQuery->whereBetween($key, $params);
-                }else if ($key == 'last_purchase_date') {
-                    if ($params[1] == 'days') {
-                        $search_date = Carbon::now()->subDays($params[0]);
-                    } else if ($params[1] == 'months') {
-                        $search_date = Carbon::now()->subMonths($params[0]);
-                    } else {
-                        $search_date = Carbon::now()->subYears($params[0]);
-                    }
-                    $filteredQuery->where('last_purchase_date', '>', $search_date);
-                }else{
-                    // filter city, postcode, country
-                    $filteredQuery->whereIn($key, $params);
-                }
+        if ($request->has('applied_filters')) {
+            foreach ($request->applied_filters as $key => $filter) {
+                FilterHelper::getFilterQuery($baseQuery, $filter);
             }
         }
 
-        if (isset($validated['applied_filters']['exclude'])) {
-            $exclude_filter = $validated['applied_filters']['exclude'];
-            foreach ($exclude_filter as $key => $filter) {
-                $params = explode(',', $filter);
-                if (in_array($key, $filter_keys)) {
-                    $filteredQuery->whereNotBetween($key, $params);
-                }else if ($key == 'last_purchase_date') {
-                    if ($params[1] == 'days') {
-                        $search_date = Carbon::now()->subDays($params[0]);
-                    } else if ($params[1] == 'months') {
-                        $search_date = Carbon::now()->subMonths($params[0]);
-                    } else {
-                        dd($params[0]);
-                        $search_date = Carbon::now()->subYears($params[0]);
-                    }
-                    $filteredQuery->where('last_purchase_date', '>', $search_date);
-                }else{
-                    $filteredQuery->whereNotIn($key, $params);
-                }
-            }
-        };
-        
-        $records_total = $filteredQuery->count();
+        if ($request->has('is_frequence')) {
+            $params = $request->all();
+            $contactIds = FilterHelper::getDataByFrequencyCap($params['frequency_cap'], $params['newsletter_channel'], $params['is_apply_freq']);
+            $baseQuery->whereNotIn('id', $contactIds);
+        }
+
+        try {
+            $records_total = $baseQuery->count();
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error', 400, 'Failed to get pharmacy data. Invalid filter column.');
+        }
+
         $records_filtered = $records_total;
         if($search){
             $search = trim($search);
-            $results = $filteredQuery
-            ->where(function($query) use ($search) {
-                $query->where('contacts.contact_name', 'ilike', '%'.$search.'%')
-                      ->orWhere('contacts.contact_no', 'ilike', '%'.$search.'%')
-                      ->orWhere('contacts.email', 'ilike', '%'.$search.'%');
-            })
-            ->orderBy($sort_column, $sort_direction);
-            $records_filtered = $results
-            ->count();
-            $results = $results 
-            ->take($length)
-            ->skip($start)
-            ->get();
-        } else {
-            $results = $filteredQuery
-            ->orderBy($sort_column, $sort_direction);
-            $records_filtered = $results
-            ->count();
-            $results = $results 
-            ->take($length)
-            ->skip($start)
-            ->get();
+            $baseQuery->where(function($query) use ($search) {
+                            $query->where('contacts.contact_name', 'ilike', '%'.$search.'%')
+                                ->orWhere('contacts.contact_no', 'ilike', '%'.$search.'%')
+                                ->orWhere('contacts.email', 'ilike', '%'.$search.'%');
+                        });
         }
+
+        if (isset($sort)) {
+            foreach ($sort as $value) {
+                $baseQuery->orderBy($value[0], $value[1]);
+            }
+        }
+
+        $records_filtered = $baseQuery->count();
+        
+        $results = $baseQuery 
+        ->take($length)
+        ->skip($start)
+        ->get();
+
+        $res = [
+            'recordsTotal' => $records_total,
+            'recordsFiltered' => $records_filtered,
+            'data' => $results,
+        ];
 
         $res = [
             'recordsTotal' => $records_total,
@@ -755,106 +944,236 @@ class B2BContactController extends Controller
      * import Data
     */
 
-    public function readDataFromFile($file, $preview_data = true)
+    public function readDataFromFile($file_url, $preview_data = true, $contact_type_id)
     {
-        $data = [];
-        if ($preview_data) {
-            $reader = IOFactory::createReaderForFile($file->getRealPath());
-        }else{
-            $reader = IOFactory::createReaderForFile($file);
-        }
+        try {
+            $data = [];
 
-        $spreadsheet = $reader->load($file);
-        $worksheet = $spreadsheet->getActiveSheet();
-        
-        // get headers from row 1
-        $headerRow = $worksheet->getRowIterator(1)->current();
-        $headerIterator = $headerRow->getCellIterator();
-        $headerIterator->setIterateOnlyExistingCells(true);
+            // Example whitelist of allowed domains
+            $allowedUrls = [ env('MINIO_ENDPOINT') ];
 
-        $headers = [];
-        foreach ($headerIterator as $cell) {
-            $headers[] = $cell->getValue();
-        }
-        $headerCount = count($headers);
-        
-        $results = [];
-        $limit = 0;
-
-        // if preview data, return headers
-        if ($preview_data) {
-            $limit = 10;
-            $headers = $this->normalizeKeys($headers);
-            $data['headers'] = $headers;
-        }
-        
-        // start read data from excel
-        foreach ($worksheet->getRowIterator(1) as $key => $row) {
-            if ($limit !== 0 && $limit < $key) {
-                break;
-            }
-            $rowData = [];
-            $cellIterator = $row->getCellIterator();
-            $cellIterator->setIterateOnlyExistingCells(false);
-
-            $colIndex = 0;
-            foreach ($cellIterator as $cell) {
-                if ($colIndex >= $headerCount) break;
-
-                $value = $cell->getValue();
-                if (strtolower($value) == 'yes' || strtolower($value) == 'no') {
-                    $value = strtolower($value) == 'yes' ? true : false;
+            foreach ($allowedUrls as $url) {
+                $parsed = parse_url($url);
+                if ($parsed && isset($parsed['host'])) {
+                    $hosts[] = strtolower($parsed['host']);
                 }
-                $rowData[] = $value;
-                $colIndex++;
+            }
+            $allowedHosts = $hosts;
+            $parsed = parse_url($file_url);
+            $path   = implode('/', array_map('rawurlencode', explode('/', $parsed['path'])));
+            $fixed_url = $parsed['scheme'].'://'.$parsed['host'].$path;
+            $sanitised_file_url = filter_var($fixed_url, FILTER_VALIDATE_URL);
+
+            if ($sanitised_file_url !== false) {
+                $parsed = parse_url($sanitised_file_url);
+
+                if ($parsed && isset($parsed['host'])) {
+                    $host = strtolower($parsed['host']);
+
+                    if (in_array($host, $allowedHosts, true)) {
+                        $response = Http::get($sanitised_file_url);
+                    } else {
+                        throw new \Exception("Host not allowed.");
+                    }
+                } else {
+                    throw new \Exception("Invalid URL structure.");
+                }
+            } else {
+                throw new \Exception("Invalid URL.");
             }
 
-            // skip empty rows
-            $isEmpty = collect($rowData)->every(fn($val) => is_null($val) || $val === '');
-            if ($isEmpty) {
-                continue;
+            if ($response->successful()) {
+                $fileContents = $response->body();
             }
 
-            $results[] = $rowData;
-        }
+            if (!$fileContents) {
+                throw new \Exception('Failed to download file');
+            }
 
-        $imported_data['headers'] = $headers;
+            // Detect file type from URL
+            $extension = strtolower(pathinfo(parse_url($file_url, PHP_URL_PATH), PATHINFO_EXTENSION));
 
-        $available_attributes[] = [
-            "header_title" => "Pharmachy Number",
-            "header_type" => "Number",
-            "header_field" => 'pharmacy_number'
-        ];
-        
-        // make array of object using headers as array keys
-        $keys = array_keys($headers);
-        for ($i = 1; $i < count($results); $i++) {
-            $data['imported_data'][] = array_combine($keys, $results[$i]);
+            // Open in-memory stream
+            $tempFile = tempnam(sys_get_temp_dir(), 'import_') . '.' . $extension;
+            file_put_contents($tempFile, $fileContents);
+
+            // Use correct reader
+            $reader = match ($extension) {
+                'xlsx' => new XlsxReader(),
+                'csv'  => new Csv(),
+                default => throw new \Exception("Unsupported file type: $extension")
+            };
+
+            // Load using PhpSpreadsheet
+            // $reader = IOFactory::createReaderForFile('php://temp'); // will fallback if not known
+            // $spreadsheet = IOFactory::load($temp); // works because $temp is a stream resource
+
+            $spreadsheet = $reader->load($tempFile);
+            // $spreadsheet = $reader->load($file);
+            $worksheet = $spreadsheet->getActiveSheet();
+            
+            // get headers from row 1
+            $headerRow = $worksheet->getRowIterator(1)->current();
+            $headerIterator = $headerRow->getCellIterator();
+            $headerIterator->setIterateOnlyExistingCells(true);
+
+            $headers = [];
+            foreach ($headerIterator as $cell) {
+                $headers[] = $cell->getValue();
+            }
+            $headerCount = count($headers);
+            
+            $results = [];
+            $limit = 0;
+
+            // if preview data, return headers
+            if ($preview_data) {
+                $limit = 10;
+                $headers = $this->normalizeKeys($headers);
+                $data['headers'] = $headers;
+            }
+
+            $coreContactFields = ColumnMappings::where('contact_type_id', $contact_type_id)->select('field_name', 'field_type', 'display_name')->get()->toArray();
+            
+            // start read data from excel
+            foreach ($worksheet->getRowIterator(1) as $key => $row) {
+                if ($limit !== 0 && $limit < $key) {
+                    break;
+                }
+                $rowData = [];
+                $cellIterator = $row->getCellIterator();
+                $cellIterator->setIterateOnlyExistingCells(false);
+
+                $colIndex = 0;
+                foreach ($cellIterator as $cell) {
+                    if ($colIndex >= $headerCount) break;
+
+                    $value = $cell->getValue();
+                    $rowData[] = $value;
+                    $colIndex++;
+                }
+
+                // skip empty rows
+                $isEmpty = collect($rowData)->every(fn($val) => is_null($val) || $val === '');
+                if ($isEmpty) {
+                    continue;
+                }
+
+                $results[] = $rowData;
+            }
+            
+            // make array of object using headers as array keys
+            $keys = array_keys($headers);
+            for ($i = 1; $i < count($results); $i++) {
+                $data['imported_data'][] = array_combine($keys, $results[$i]);
+            }
+
+            $importMapping = $this->buildImportMapping($coreContactFields, $headers);
+            $data['data_mapping'] = $importMapping;
+            return $data;
+            
+        } catch (\Exception $e) {
+            Log::error("Failed to read imported file: " . $e->getMessage());
+            throw $e;
         }
-        
-        return $data;
     }
 
-    public function previewContact(Request $request){
+    function buildImportMapping($columnMappings, $headers)
+    {
+        $result = [];
+
+        foreach ($headers as $headerKey => $headerValue) {
+            // Find mapping definition
+            $diff = false;
+            $sourceKey = null;
+            if (in_array($headerKey, ['company_name', 'pharmacy_name','full_name'])) {
+                $sourceKey = $headerKey;
+                $headerKey = 'contact_name';
+                $diff = true;
+            }
+            if (in_array($headerKey, ['pharmacy_number'])) {
+                $sourceKey = $headerKey;
+                $headerKey = 'contact_no';
+                $diff = true;
+            }
+            if (in_array($headerKey, ['created_at'])) {
+                $sourceKey = $headerKey;
+                $headerKey = 'created_date';
+                $diff = true;
+            }
+            $mapping = collect($columnMappings)->firstWhere('field_name', $headerKey);
+            
+            if ($mapping) {
+                $mapKey = $diff ? $sourceKey : $headerKey;
+                $result[] = [
+                    'display_name'      => $mapping['display_name'],
+                    'source_field'      => $mapKey,                   // field from Excel file
+                    'destination_field' => $mapping['field_name'],       // field in DB
+                    'type'              => strtolower($mapping['field_type']), // e.g. "text"
+                    'import'            => true,                         // default true
+                    'custom'            => false,                        // default false
+                ];
+            }else{
+                $result[] = [
+                    'display_name'      => ucwords(str_replace('_', ' ', $headerKey)), 
+                    'source_field'      => $headerKey,
+                    'destination_field' => $headerKey,
+                    'type'              => 'Text',
+                    'import'            => false,
+                    'custom'            => true,
+                ];
+            }
+        }
+
+        return $result;
+    }
+   
+
+    public function previewImportContact(Request $request){
         $data = $request->validate([
-            'contact_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-            'contact_type' => 'required|in:pharmacy,supplier,general-newsletter',
+            'contact_file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            'contact_type' => 'required|in:pharmacy,supplier,general-newsletter,pharmacy-database,community',
         ]);
 
-        $file = $data['contact_file'];
-        $path = '/temp';
+        $b2bController = new B2BContactAdjustmentController();
+        $uploadRequest = new Request();
+        $uploadRequest->files->set('file', $data['contact_file']);
 
-        $file_name = uniqid() . '_' . $file->getClientOriginalName();
-                
-        // Store the file in MinIO
-        //$file->storeAs('', $file_path, 'minio');
+        $uploadResponse = $b2bController->handleFileUpload($uploadRequest);
+        $uploadData = json_decode($uploadResponse->getContent(), true);
 
-        // Store to local private storage
-        Storage::disk('local')->putFileAs($path, $file, $file_name);
+        if ($uploadResponse->getStatusCode() !== 200) {
+            return $this->errorResponse(
+                'Failed to upload file: ' . ($uploadData['message'] ?? 'Unknown error'),
+                400
+            );
+        }
 
-        $results = $this->readDataFromFile($file, true);
-        $results['file_name'] = $file_name;
+        $minioBaseUrl = env('MINIO_ENDPOINT');
+        $uploadedFiles['file_name'] = $uploadData['original_filename'];
+        $uploadedFiles['file_path'] = $uploadData['minio_path'];
+        // $uploadedFiles['file_url'] = $uploadData['file_url'];
+        $uploadedFiles['file_url'] = $minioBaseUrl.'/datahub/'.$uploadData['minio_path'];
 
+        $contact = $data['contact_type'];
+        $contact_type = [
+            'pharmacy'=>$this->contact_pharmacy->id,
+            'supplier'=>$this->contact_supplier->id,
+            'general-newsletter'=>$this->contact_general_newsletter->id,
+            'community'=>$this->contact_community->id,
+            'pharmacy-database'=>$this->contact_pharmacy_db->id,
+        ];
+
+        try {
+            $results = $this->readDataFromFile($uploadedFiles['file_url'], true, $contact_type[strtolower($contact)]);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error', 400, 'Failed to read imported file');
+        }
+
+        $results['file_url'] = $uploadedFiles['file_url'];
+        $results['contact_type'] = $data['contact_type'];
+        unset($results['headers']);
+        
         return $this->successResponse($results, 'Imported data', 200);
     }
 
@@ -864,7 +1183,7 @@ class B2BContactController extends Controller
         foreach ($data as $key => $value) {
             if ($value) {
                 $newKey = strtolower(str_replace(' ', '_', $value));
-                $normalized[$newKey] = $value;
+                $normalized[$newKey] = ucwords(str_replace('_', ' ', $value));
             }
         }
 
@@ -874,194 +1193,756 @@ class B2BContactController extends Controller
     public function saveImportContact(Request $request)
     {
         $validated = $request->validate([
-            'file_name' => 'required|string',
-            'contact_type' => 'required|in:pharmacy,supplier,general-newsletter',
+            'file_url' => 'required|string',
+            'contact_type' => 'required|in:pharmacy,supplier,general-newsletter,community,pharmacy-database',
+            'data_mapping' => 'required|array',
         ]);
 
-        // check if file exist, then start importing
-        if (!Storage::disk('local')->exists('temp/'.$validated['file_name'])) {
-            return $this->errorResponse('Error', 400, 'Failed to import data. File not found');
-        }
-        $file = Storage::disk('local')->path('temp/'.$validated['file_name']);
-        $data = $this->readDataFromFile($file, false);
-
-        switch($validated['contact_type']){
-            case 'pharmacy':
-                $import_status = $this->importPharmacy($data['imported_data']);
-                break;
-            case 'supplier':
-                $import_status = $this->importSupplier($data['imported_data']);
-                break;
-            case 'general-newsletter':
-                $import_status = $this->importGeneralNewsletter($data['imported_data']);
-                break;
-            case 'default':
-                return $this->errorResponse('Error', 404, 'Invalid contact type');
-                break;
-        }
-
-        if ($import_status) {
-            return $this->successResponse(null, 'Data imported successfully', 200);
-        }
-
-        return $this->errorResponse('Error', 400, 'Failed to import data');
-    }
-
-    public function importPharmacy($imported_data)
-    {
-        $default_columns = [
-            'contact_name', 'contact_no', 'address', 'post_code', 'city',
-            'country', 'contact_person', 'email', 'phone_no', 'amount_purchase', 
-            'average_purchase', 'total_purchase', 'last_purchase_date'
-        ];
-
-        $imported_data = $this->checkImportCustomFields($default_columns, $imported_data);
-
-        for ($i=0; $i < count($imported_data); $i++) {
-            $imported_data[$i]['contact_type_id'] = $this->contact_pharmacy->id;
-            if (isset($imported_data[$i]['created_date'])) {
-                $imported_data[$i]['created_date'] = \DateTime::createFromFormat('Y.m.d', $imported_data[$i]['created_at'])->format('Y-m-d');
-            }
-        }
-
         try {
-            DB::beginTransaction();
-            foreach ($imported_data as $key => $data) {
-                $new_contact = B2BContacts::create($data);
+            // whitelist of allowed domains
+            $allowedUrls = [ env('MINIO_ENDPOINT') ];
 
-                if ($data['contact_person']) {
-                    ContactPersons::create([
-                        'contact_person' => $new_contact->id,
-                        'contact_name' => $data['name'],
-                        'email' => $data['email'],
-                        'phone_no' => $data['phone_no']
-                    ]);
+            foreach ($allowedUrls as $url) {
+                $parsed = parse_url($url);
+                if ($parsed && isset($parsed['host'])) {
+                    $hosts[] = strtolower($parsed['host']);
                 }
             }
-            DB::commit();
-            return true;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return false;
-        }
-    }
+            $allowedHosts = $hosts;
+            $parsed = parse_url($validated['file_url']);
+            $path   = implode('/', array_map('rawurlencode', explode('/', $parsed['path'])));
+            $fixed_url = $parsed['scheme'].'://'.$parsed['host'].$path;
+            $sanitised_file_url = filter_var($fixed_url, FILTER_VALIDATE_URL);
 
-    public function importSupplier($imported_data)
-    {
-        $default_columns = [
-            'contact_name', 'vat_id', 'post_code', 'city',
-            'country', 'contact_person', 'email', 'phone_no', 'amount_purchase', 
-            'average_purchase', 'total_purchase', 'last_purchase_date', 'created_at'
-        ];
-        
-        $imported_data = $this->checkImportCustomFields($default_columns, $imported_data);
+            if ($sanitised_file_url !== false) {
+                $parsed = parse_url($sanitised_file_url);
 
-        for ($i=0; $i < count($imported_data); $i++) {
-            $imported_data[$i]['contact_type_id'] = $this->contact_supplier->id;
-            if (isset($imported_data[$i]['created_date'])) {
-                $imported_data[$i]['created_date'] = \DateTime::createFromFormat('Y.m.d', $imported_data[$i]['created_at'])->format('Y-m-d');
-            }
-        }
+                if ($parsed && isset($parsed['host'])) {
+                    $host = strtolower($parsed['host']);
 
-        try {
-            DB::beginTransaction();
-            foreach ($imported_data as $key => $data) {
-                $new_contact = B2BContacts::create($data);
-                if ($data['contact_person']) {
-                    ContactPersons::create([
-                        'contact_person' => $new_contact->id,
-                        'contact_name' => $data['contact_person'],
-                        'email' => $data['email'],
-                        'phone_no' => $data['phone_no']
-                    ]);
+                    if (!in_array($host, $allowedHosts, true)) {
+                        throw new \Exception("Host not allowed.");
+                    }
+                } else {
+                    throw new \Exception("Invalid URL structure.");
                 }
+            } else {
+                throw new \Exception("Invalid URL.");
             }
-            DB::commit();
-            return true;
         } catch (\Exception $e) {
-            DB::rollBack();
-            return false;
+            Log::error('Error import: ', [$e->getMessage()]);
+            return $this->errorResponse('Error', 400, 'Failed to save imported contact');
         }
-    }
 
-    public function importGeneralNewsletter($imported_data)
-    {
-        $default_columns = [
-            'contact_name', 'email', 'phone_no', 'email_subscription', 'whatsapp_subscription', 'created_at'
+        $contact = $validated['contact_type'];
+        $contact_type = [
+            'pharmacy'=>$this->contact_pharmacy->id,
+            'supplier'=>$this->contact_supplier->id,
+            'general-newsletter'=>$this->contact_general_newsletter->id,
+            'community'=>$this->contact_community->id,
+            'pharmacy-database'=>$this->contact_pharmacy_db->id,
         ];
-        
-        $imported_data = $this->checkImportCustomFields($default_columns, $imported_data);
 
-        for ($i=0; $i < count($imported_data); $i++) {
-            $imported_data[$i]['contact_type_id'] = $this->contact_general_newsletter->id;
-            if (isset($imported_data[$i]['created_date'])) {
-                $imported_data[$i]['created_date'] = \DateTime::createFromFormat('Y.m.d', $imported_data[$i]['created_at'])->format('Y-m-d');
-            }
-            if (isset($imported_data[$i]['email_subscription'])) {
-                $imported_data[$i]['email_subscription'] = strtolower($imported_data[$i]['email_subscription']) == 'yes' ? true : false;
-            }
-            if (isset($imported_data[$i]['whatsapp_subscription'])) {
-                $imported_data[$i]['whatsapp_subscription'] = strtolower($imported_data[$i]['whatsapp_subscription']) == 'yes' ? true : false;
-            }
-            unset($imported_data[$i]['created_at']);
-        }
+        dispatch(new ProcessImport($validated['file_url'], $contact_type[strtolower($contact)], $contact, $validated['data_mapping']));
+        event(new AuditLogged(AuditLogs::getModule($validated['contact_type']), 'Import Contacts'));
 
-        try {
-            DB::beginTransaction();
-            foreach (array_chunk($imported_data, 100) as $chunk) {
-                B2BContacts::insert($chunk);
-            }
-            DB::commit();
-            return true;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return false;
-        }
-    }
-
-    public function checkImportCustomFields($default_columns, $imported_data){
-        $custom_fields = [];
-
-        $imported_keys = array_keys($imported_data[0]);
-        
-        // check if custom fields exist
-        foreach ($imported_keys as $key) {
-            if (!in_array($key, $default_columns)) {
-                $custom_fields[] = $key;
-            }
-        }
-        
-        // check mapping to database column
-        // insert data to custom_fields if database column not exist
-        // delete(unset) data from array of data
-        if ($custom_fields) {
-            foreach ($custom_fields as $key => $field) {
-                for ($i=0; $i < count($imported_data); $i++) {
-                    $custom[$field] = $imported_data[$i][$field];
-                    $imported_data[$i]['custom_fields'] = json_encode($custom);
-                    unset($imported_data[$i][$field]);
-                }
-            }
-        }
-
-        return $imported_data;
+        return $this->successResponse(null, 'Data imported on background. Please check again in a few moments.', 200);
     }
 
     public function contactFilters(Request $request)
     {
         $validated = $request->validate([
-            'contact_type' => 'required|in:pharmacy,supplier,general-newsletter',
+            'contact_type' => 'nullable|in:pharmacy,supplier,general-newsletter,community,pharmacy-database',
+            'search_type' => 'required|in:post_code,country,city',
+        ]);
+
+        $baseQueryB2B = B2BContacts::query();
+        $baseQueryB2C = Contacts::query();
+
+        if ($request->has('contact_type')) {
+            $contact = $validated['contact_type'];
+            $contact_type = [
+                'pharmacy'=>$this->contact_pharmacy->id,
+                'supplier'=>$this->contact_supplier->id,
+                'general-newsletter'=>$this->contact_general_newsletter->id,
+                'pharmacy-database'=>$this->contact_pharmacy_db->id,
+                'community'=>$this->contact_community->id
+            ];
+            $baseQueryB2B->where('contact_type_id', $contact_type[$contact]);
+            $baseQueryB2C->where('contact_type_id', $contact_type[$contact]);
+        }
+
+        if ($request->has('search')) {
+            $baseQueryB2B->where($validated['search_type'], 'ilike', '%'.$request->search.'%');
+            $baseQueryB2C->where($validated['search_type'], 'ilike', '%'.$request->search.'%');
+        }
+
+        $B2BResult = $baseQueryB2B->distinct()->where($validated['search_type'], '!=', '')->whereNotNull($validated['search_type'])->pluck($validated['search_type']);
+        $B2CResult = $baseQueryB2C->distinct()->where($validated['search_type'], '!=', '')->whereNotNull($validated['search_type'])->pluck($validated['search_type']);
+
+        $filters[$validated['search_type']] = $B2BResult->merge($B2CResult)
+                                            ->map(fn($item) => $item ? trim($item) : null) // trim around
+                                            ->filter(fn($item) => !empty($item))           // remove null/empty
+                                            ->unique(fn($item) => strtolower($item))       // case-insensitive unique
+                                            ->sort()                                       // sort alphabetically
+                                            ->values();
+        return $this->successResponse($filters,'Filter data retrived',200);
+    }
+
+    public function checkContactByPhone(Request $request)
+    {
+        $validated = $request->validate([
+            'phone_no' => 'required|string|max:255',
+        ]);
+
+        $contact = B2BContacts::where('phone_no', $validated['phone_no'])
+            ->where('is_deleted', false)
+            ->first();
+
+        if ($contact) {
+            return $this->successResponse($contact, 'Phone number found', 200);
+        }
+
+        return $this->errorResponse('Error', 400, 'Phone number not found');
+    }
+
+    public function getContactDetailById($id, $type)
+    {
+        $contactType = null;
+
+        if ($type == 'b2b') {
+            $contactType = new B2BContacts;
+        }
+        
+        if ($type == 'b2c') {
+            $contactType = new Contacts;
+        }
+
+        if(!$contactType){
+            return $this->errorResponse('Error', 400, 'Invalid Contact Type');
+        }
+
+        $contact = $contactType::where('id', $id)
+            ->where('is_deleted', false)
+            ->first();
+
+        if(!$contact){
+            return $this->errorResponse('Error', 404, 'Contact not found');
+        }
+
+        if ($contact['contact_person']) {
+            $contact['contact_person'] = [
+                [
+                    'name' => $contact->contact_person,
+                    'email' => $contact->email,
+                    'phone_no' => $contact->phone_no,
+                ]
+            ];
+            unset($contact['email'], $contact['phone_no']);
+        }
+        
+       return $this->successResponse($contact, 'Contact data', 200);
+    }
+
+    public function addFile(Request $request)
+    {
+        $data = $request->validate([
+            'contact_id' => 'nullable|numeric',
+            'files' => 'required|array|max:3',
+            'files.*' => 'required|file|mimes:doc,docx,csv,xlsx,xls,pdf|max:2048',
+        ]);
+
+        if ($request->has('files')) {
+            $b2bController = new B2BContactAdjustmentController();
+            $uploadRequest = new Request();
+            $uploadedFiles = [];
+            foreach ($data['files'] as $key => $file) {
+                $uploadRequest->files->set('file', $file);
+                $uploadResponse = $b2bController->handleFileUpload($uploadRequest);
+                $uploadData = json_decode($uploadResponse->getContent(), true);
+
+                if ($uploadResponse->getStatusCode() !== 200) {
+                    return $this->errorResponse(
+                        'Failed to upload file: ' . ($uploadData['message'] ?? 'Unknown error'),
+                        400
+                    );
+                }
+
+                $minioBaseUrl = env('MINIO_ENDPOINT');
+                $uploadedFiles['file_name'] = $uploadData['original_filename'];
+                $uploadedFiles['file_path'] = $uploadData['minio_path'];
+                if ($request->has('contact_id')) {
+                    $uploadedFiles['contact_id'] = $data['contact_id'];
+                }
+                $size = $file->getSize();
+                $sizeInKb = round($size / 1024, 2);
+                $uploadedFiles['file_size'] = $sizeInKb.' KB';
+                $newFile = B2BFiles::create($uploadedFiles);
+                $newFile['file_url'] = $minioBaseUrl.'/datahub/'.$uploadData['minio_path'];
+                $createdFiles[] = $newFile;
+            }
+        }
+        if (!$createdFiles) {
+            return $this->errorResponse('Error', 400, 'Failed to upload file');
+        }
+        
+        return $this->successResponse($createdFiles, 'File uploaded', 200);
+    }
+
+    public function readFile($id)
+    {
+        $file = B2BFiles::find($id);
+        if (!$file) {
+            return $this->errorResponse('Error', 400, 'File not found');
+        }
+        
+        return $this->successResponse($file, 'File deleted', 200);
+    }
+
+    public function deleteFile($id)
+    {
+        $file = B2BFiles::find($id);
+        if (!$file) {
+            return $this->errorResponse('Error', 400, 'File not found');
+        }
+        $file->delete();
+        return $this->successResponse(null, 'File deleted', 200);
+    }
+
+    public function addKeyAccountManager(Request $request)
+    {
+        $data = $request->validate([
+            'contact_id' => 'required',
+            'manager_name' => 'required|string|max:255',
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string|max:255',
+            'wa_template_id' => 'nullable|numeric',
+            'message_template_name' => 'nullable|string|max:255',
+            'auto_reply' => 'nullable|boolean',
+        ]);
+
+        $contact = B2BContacts::where('id', $data['contact_id'])
+        ->where('is_deleted', false)
+        ->first();
+        if (!$contact) {
+            return $this->errorResponse('Error', 400, 'Contact not found');
+        }
+
+        $keyAccountManager = AccountKeyManagers::create($data);
+        $contact->account_key_manager_id = $keyAccountManager->id;
+        $contact->save();
+        $contact->load('accountManager');
+
+        return $this->successResponse($contact, 'Key account manager added', 200);
+    }
+
+    public function editKeyAccountManager(Request $request, $id)
+    {
+        $data = $request->validate([
+            'manager_name' => 'nullable|string|max:255',
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string|max:255',
+            'wa_template_id' => 'nullable|numeric',
+            'message_template_name' => 'nullable|string|max:255',
+            'auto_reply' => 'nullable|boolean',
+        ]);
+
+        $keyAccountManager = AccountKeyManagers::find($id);
+        if (!$keyAccountManager) {
+            return $this->errorResponse('Error', 400, 'Key Account Manager not found');
+        }
+
+        $keyAccountManager->update($data);
+        $keyAccountManager->refresh();
+
+        return $this->successResponse($keyAccountManager, 'Key account manager updated', 200);
+    }
+
+    public function deleteKeyAccountManager($id)
+    {
+        $keyAccountManager = AccountKeyManagers::find($id);
+        if (!$keyAccountManager) {
+            return $this->errorResponse('Error', 400, 'Key Account Manager not found');
+        }
+
+        $contact = B2BContacts::where('account_key_manager_id', $id)
+        ->where('is_deleted', false)
+        ->first();
+
+        $contact->update(['account_key_manager_id' => null]);
+
+        $keyAccountManager->delete();
+
+        return $this->successResponse(null, 'Key account manager deleted', 200);
+    }
+
+    public function getKeyAccountManageTemplateMessage()
+    {
+        $templateMessage = WhatsappChatTemplate::get();
+
+        if($templateMessage->isEmpty()){
+            return $this->errorResponse('Error', 400, 'Template not found');
+        }
+        
+        return $this->successResponse($templateMessage, 'Template Message retrieved', 200);
+    }
+
+    public function getKeyAccountManageTemplateMessagebyId($id)
+    {
+        $templateMessage = $templateMessage = WhatsappChatTemplate::find($id);
+
+        if(!$templateMessage){
+            return $this->errorResponse('Error', 400, 'Template not found');
+        }
+        
+        return $this->successResponse($templateMessage, 'Template Message retrieved', 200);
+    }
+
+    function generateSignature(array $payload): string
+    {
+        $signatureToken = config('app.signature_token');
+        $signature = hash_hmac('sha256', json_encode($payload, JSON_THROW_ON_ERROR), $signatureToken);
+
+        return $signature;
+    }
+
+    public function getCommunityUserByAge() {
+        try {
+            $communityUsers = CommunityUsers::query()
+            ->selectRaw("DATE_PART('year', AGE(date_of_birth)) AS age, COUNT(id) AS total")
+            ->whereNotIn('id', function ($query) {
+                $query->select('user_id')
+                    ->from('user_roles');
+            })
+            ->groupByRaw("DATE_PART('year', AGE(date_of_birth))")
+            ->orderBy('age')
+            ->get();
+
+            $totalUsers = $communityUsers->sum('total');
+
+            $ageRanges = [
+                '18-25' => 0,
+                '26-34' => 0,
+                '35-49' => 0,
+                '50+' => 0,
+            ];
+
+            foreach ($communityUsers as $item) {
+                if ($item->age >= 18 && $item->age <= 25) {
+                    $ageRanges['18-25'] += $item->total;
+                } elseif ($item->age >= 26 && $item->age <= 34) {
+                    $ageRanges['26-34'] += $item->total;
+                } elseif ($item->age >= 35 && $item->age <= 49) {
+                    $ageRanges['35-49'] += $item->total;
+                } elseif ($item->age >= 50) {
+                    $ageRanges['50+'] += $item->total;
+                }
+            }
+
+            $collection = collect([]);
+            foreach ($ageRanges as $key => $value) {
+                $collection->push([
+                    'name' => $key,
+                    'total' => $value,
+                    'percentage' => $value > 0 ? number_format(($value / $totalUsers) * 100, 2) . '%' : '0%',
+                ]);
+            }
+
+            return $this->successResponse($collection, '"Community users by age retrieved', 200);
+        } catch (\Exception $e) {
+            Log::error('Failed to getCommunityUserByAge: ', [$e->getMessage()]);
+            return $this->errorResponse('Error', 400, 'Failed to get community user by age');
+        }
+        
+    }
+
+    public function getCountryCode(Request $request)
+    {
+        if ($request->has('code')) {
+            $results = CountryCodes::where('code', $request->code)->first();
+        }else{
+            $results = CountryCodes::all();
+        }
+
+        return $this->successResponse($results, 'Country code retrieved', 200);
+    }
+
+    public function getImportColumnMapping(Request $request)
+    {
+        $validated = $request->validate([
+            'contact_type' => 'required|in:pharmacy,supplier,general-newsletter,community,pharmacy-database',
         ]);
 
         $contact = $validated['contact_type'];
         $contact_type = [
             'pharmacy'=>$this->contact_pharmacy->id,
             'supplier'=>$this->contact_supplier->id,
-            'general-newsletter'=>$this->contact_general_newsletter->id
+            'general-newsletter'=>$this->contact_general_newsletter->id,
+            'pharmacy-database'=>$this->contact_pharmacy_db->id,
+            'community'=>$this->contact_community->id
+        ];
+        
+        $mappings = ColumnMappings::where('contact_type_id', $contact_type[$contact])->select('field_name', 'display_name', 'field_type')->get();
+        return $this->successResponse($mappings, 'Column mappings retrieved', 200);
+    }
+
+    public function downloadSampleImport(Request $request)
+    {
+        $validated = $request->validate([
+            'contact_type' => 'required|in:pharmacy,supplier,general-newsletter,community,pharmacy-database',
+        ]);
+
+        switch ($validated['contact_type']) {
+            case 'pharmacy':
+                $data['file_url'] = 'https://cns-storage.kemang.sg/datahub/68cb780c0a7b9-sample-pharmacy.csv';
+                break;
+            case 'supplier':
+                $data['file_url'] = 'https://cns-storage.kemang.sg/datahub/68cb78a3ec0ed-sample-supplier.csv';
+                break;
+            case 'general-newsletter':
+                $data['file_url'] = 'https://cns-storage.kemang.sg/datahub/68cb787364be5-sample-general-newsletter.csv';
+                break;
+            case 'community':
+                $data['file_url'] = 'https://cns-storage.kemang.sg/datahub/68cb784032b5b-sample-community.csv';
+                break;
+            case 'pharmacy-database':
+                $data['file_url'] = 'https://cns-storage.kemang.sg/datahub/68cb788d14142-sample-pharmacy-database.csv';
+                break;
+            default:
+                $data['file_url'] = null;
+                break;
+        }
+
+        // $filename = "sample-{$validated['contact_type']}.csv";
+        // $filePath = 'sample/' . $filename;
+
+        // if (!Storage::disk('public')->exists($filePath)) {
+        //     return $this->errorResponse('Error', 400, 'File not found');
+        // }
+
+        // $url = URL::temporarySignedRoute(
+        //     'api.download.sample',
+        //     now()->addMinutes(5),
+        //     ['path' => $filePath]
+        // );
+
+        return $this->successResponse($data, 'Download sample import file', 200);
+    }
+
+    public function contactDropdownFilter(Request $request, $contact_type_id, $column)
+    {
+        $validator = validator(
+            ['contact_type_id' => $contact_type_id, 'column' => $column],
+            [
+                'contact_type_id' => 'required|integer|exists:contact_types,id',
+                'column' => 'required|string'
+            ]
+        );
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Error', 400, 'Failed to get data. Data not Found.');
+        }
+        
+        $search = $request->validate([
+            'search' => 'nullable|string'
+        ]);
+
+        try {
+            // check against special columns
+            $checkColumn = [
+                'company_name'   => 'contact_name',
+                'pharmacy_name'  => 'contact_name',
+                'full_name'      => 'contact_name',
+                'pharmacy_number'=> 'contact_no',
+                'created_at'     => 'created_date',
+            ];
+            $searchCol = $checkColumn[$column] ?? $column;
+
+            $baseQueryB2B = B2BContacts::query();
+            $baseQueryB2C = Contacts::query();
+
+            $baseQueryB2B->where('is_deleted', false)->where('contact_type_id', $contact_type_id);
+            $baseQueryB2C->where('is_deleted', false)->where('contact_type_id', $contact_type_id);
+
+            if ($request->has('search')) {
+                $baseQueryB2B->where($searchCol, 'ilike', '%'.$request->search.'%');
+                $baseQueryB2C->where($searchCol, 'ilike', '%'.$request->search.'%');
+            }
+
+            $B2BResult = $baseQueryB2B->distinct()->where($searchCol, '!=', '')->whereNotNull($searchCol)->limit(5)->pluck($searchCol);
+            $B2CResult = $baseQueryB2C->distinct()->where($searchCol, '!=', '')->whereNotNull($searchCol)->limit(5)->pluck($searchCol);
+
+            $filters = $B2BResult->merge($B2CResult)
+                        ->map(fn($item) => $item ? trim($item) : null) // trim around
+                        ->filter(fn($item) => !empty($item))           // remove null/empty
+                        ->unique(fn($item) => strtolower($item))       // case-insensitive unique
+                        ->sort()                                       // sort alphabetically
+                        ->values();
+        } catch (\Exception $e) {
+            Log::error('Get filter Data: ', [$e->getMessage()]);
+            return $this->errorResponse('Error', 400, 'Failed to get data. Invalid column name.');
+        }
+        
+        return $this->successResponse($filters,'Filter data retrieved',200);
+    }
+
+    public function getContactReport(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:whatsapp,email',
+            'log_id' => 'required|exists:pgsql_b2b_shared.contact_logs,id',
+            'status' => 'nullable|string'
+        ]);
+
+        $log = ContactLogs::find($validated['log_id']);
+
+        if ($validated['type'] == 'email') {
+            if ($request->filled('status')) {
+                $status = FilterHelper::mapEmailCampaignEventToStatus($validated['status']);
+                $contactIds = CampaignContact::select('contact_id')->whereIn('status', $status)->distinct()->get()->pluck('contact_id')->toArray();
+            }else{
+                $contactIds = CampaignContact::select('contact_id')->where('id', $log->campaign_id)->distinct()->get()->pluck('contact_id')->toArray();
+            }
+        }
+
+        if ($validated['type'] == 'whatsapp') {
+            if ($request->filled('status')) {
+                $status = FilterHelper::mapWhatsappCampaignStatusForReport($validated['status']);
+                $contactIds = CampaignContact::select('contact_id')->whereIn('status', $status)->distinct()->get()->pluck('contact_id')->toArray();
+            }else{
+                $campaign = WaNewsLetter::select('contact_ids')->where('id', $log->campaign_id)->first();
+                $contactIds = json_decode($campaign->contact_ids, true);
+            }
+        }
+
+        try {
+            $sort[] = ['row_no', 'asc'];
+            if ($request->filled('sort')) {
+                $allowed_sort = ['id', 'row_no', 'contact_name', 'contact_no', 'post_code', 'city', 'country', 'address', 'contact_person', 'email', 
+                'phone_no', 'amount_purchase','average_purchase', 'total_purchase', 'last_purchase_date', 'created_date'];
+
+                $sort_column = $request->get('sort');
+                foreach ($sort_column as $key => $value) {
+                    $sort[] = explode('.', $value);
+                    // if sort column not included in array and not ascending or descending
+                    if (!in_array($sort[$key][0], $allowed_sort) || ($sort[$key][1] !== 'asc' && $sort[$key][1] !== 'desc')) {
+                        return $this->errorResponse('Error', 400, 'Failed to get contact data. Invalid sorting column.');
+                    }
+                }
+            }
+
+            $start = $request->get('start', 0);
+            $length = $request->get('length', 10);
+            $search = $request->get('search');
+
+            if ($log->contact_flag == 'b2b') {
+                $baseQuery = B2BContacts::whereIn('id', $contactIds);
+            }else{
+                $baseQuery = Contacts::whereIn('id', $contactIds);
+            }
+
+            $records_total = $baseQuery->count();
+        } catch (\Exception $e) {
+            Log::error('Get contacts Data: ', [$e->getMessage()]);
+            return $this->errorResponse('Error', 400, 'Failed to get contacts data.');
+        }
+
+        $records_filtered = $records_total;
+        if($search){
+            $search = trim($search);
+            $baseQuery->where(function($query) use ($search) {
+                            $query->where('contacts.contact_name', 'ilike', '%'.$search.'%')
+                                ->orWhere('contacts.contact_no', 'ilike', '%'.$search.'%')
+                                ->orWhere('contacts.email', 'ilike', '%'.$search.'%');
+                        });
+        }
+
+        if ($request->has('sort')) {
+            foreach ($sort as $value) {
+                $baseQuery->orderBy($value[0], $value[1]);
+            }
+        }else{
+            $baseQuery->orderBy('contacts.id', 'desc');
+        }
+
+        $records_filtered = $baseQuery->count();
+        
+        $results = $baseQuery 
+        ->take($length)
+        ->skip($start)
+        ->get();
+
+        foreach ($results as $key => $data) {
+            $data->amount_contacts = B2BContacts::where('contact_parent_id',$data->id)->count();
+        }
+
+        $res = [
+            'recordsTotal' => $records_total,
+            'recordsFiltered' => $records_filtered,
+            'data' => $results,
         ];
 
-        $filter_service = new FilterService;
-        $filters = $filter_service->getFilterData($contact_type[$contact]);
-        return $this->successResponse($filters,'All pharmacy data',200);
+        return $this->successResponse($res, 'All contacts data', 200);
+    }
+
+    public function reviewExportCampaignContact(Request $request)
+    {
+        try {
+            $sortByAmount = false;
+            $sort[] = ['row_no', 'asc'];
+            if ($request->has('sort')) {
+                $sort = [];
+                $allowed_sort = ['id', 'row_no', 'contact_name', 'vat_id', 'contact_no', 'post_code', 'city', 'country', 'address', 'contact_person', 'email', 'amount_of_contacts', 'amount_contacts',
+                'phone_no', 'amount_purchase','average_purchase', 'total_purchase', 'last_purchase_date', 'created_date', 'whatsapp_subscription', 'email_subscription'];
+
+                $sort_column = $request->get('sort');
+
+                if (is_string($sort_column)) {
+                    $decoded = json_decode($sort_column, true);
+                    $sort_column = json_last_error() === JSON_ERROR_NONE ? $decoded : [$sort_column];
+                }
+                foreach ($sort_column as $key => $value) {
+                    $tempSort = explode('.', $value);
+                    if ($tempSort[0] == 'amount_contacts') {
+                        $sortByAmount = $tempSort;
+                    }else{
+                        $sort[] = $tempSort;
+                        // if sort column not included in array and not ascending or descending
+                        if (!in_array($sort[$key][0], $allowed_sort) || ($sort[$key][1] !== 'asc' && $sort[$key][1] !== 'desc')) {
+                            return $this->errorResponse('Error', 400, 'Failed to get pharmacy data. Invalid sorting column.');
+                        }
+                    }                    
+                }
+            }
+
+            $start = $request->get('start', 0);
+            $length = $request->get('length', 10);
+            $search = $request->get('search');
+
+            $ids = $request->contact_ids;
+            if (is_string($ids) && str_starts_with($ids, '[')) {
+                $ids = json_decode($ids, true);
+            }
+
+            $ids = array_map('intval', (array) $ids);
+            if (in_array($request->contact_type_id, [1,2,3])) {
+                $baseQuery = B2BContacts::selectRaw('ROW_NUMBER() OVER (ORDER BY id desc) as row_no, *')
+                ->where('contact_type_id', $request->contact_type_id)->whereIn('id', $ids);
+            }else{
+                $baseQuery = Contacts::selectRaw('ROW_NUMBER() OVER (ORDER BY id desc) as row_no, *')
+                ->where('contact_type_id', $request->contact_type_id)->whereIn('id', $ids);
+            }
+        
+            $records_total = $baseQuery->count();
+        } catch (\Exception $e) {
+            Log::error('Review export contact Data: ', [$e->getMessage()]);
+            return $this->errorResponse('Error', 400, 'Failed to get data.');
+        }
+
+        $records_filtered = $records_total;
+        if($search){
+            $search = trim($search);
+            $baseQuery->where(function($query) use ($search) {
+                            $query->where('contacts.contact_name', 'ilike', '%'.$search.'%')
+                                ->orWhere('contacts.contact_no', 'ilike', '%'.$search.'%')
+                                ->orWhere('contacts.email', 'ilike', '%'.$search.'%');
+                        });
+        }
+
+        foreach ($sort as $value) {
+            $baseQuery->orderBy($value[0], $value[1]);
+        }
+
+        $records_filtered = $baseQuery->count();
+        
+        $results = $baseQuery 
+        ->take($length)
+        ->skip($start)
+        ->get();
+
+        // special case if sort by amount contacts
+        if ($sortByAmount) {
+            if($sortByAmount[1] == 'asc'){
+                $results = $results->sortBy('amount_contacts')->values();
+            }else{
+                $results = $results->sortByDesc('amount_contacts')->values();
+            }
+        }
+
+        $res = [
+            'recordsTotal' => $records_total,
+            'recordsFiltered' => $records_filtered,
+            'data' => $results,
+        ];
+
+       return $this->successResponse($res,'All pharmacy data',200);
+    }
+    
+    public function getDefaultFields($contact_type_id)
+    {
+        $lists = ColumnMappings::where('contact_type_id', $contact_type_id)->get();
+        return $this->successResponse($lists, 'Default fields retrieved', 200);
+    }
+    
+    public function getCustomFields($contact_type_id, Request $request)
+    {
+        if (in_array($contact_type_id, [1,2,3])) {
+            $query = B2BContactField::where('contact_type_id', $contact_type_id);
+        }else{
+            $query = B2CContactField::where('contact_type_id', $contact_type_id);
+        }
+
+        if ($request->has('search')) {
+            $lists = $query->where('field_name', 'ilike', '%'.$request->search.'%')->get();
+        }else{
+            $lists = $query->get();
+        }
+
+        foreach ($lists as $list) {
+            $list->display_name = ucwords(str_replace('_', ' ', $list->field_name));
+        }
+        return $this->successResponse($lists, 'Custom fields retrieved', 200);
+    }
+
+    public function addCustomField($contact_type_id, Request $request)
+    {
+        $data = $request->validate([
+            'field_name' => 'required|string|max:255',
+            'field_type' => 'required|string|in:Text,Number,Date',
+        ]);
+
+        $data['contact_type_id'] = $contact_type_id;
+
+        try {
+            if (in_array($contact_type_id, [1,2,3])) {
+                $custom_field = B2BContactField::create($data);
+            }else{
+                $custom_field = B2CContactField::create($data);
+            }
+
+            return $this->successResponse($custom_field, 'Custom field added successfully', 200);
+        } catch (\Exception $e) {
+            Log::error('failed to add new custom field: ', [$e]);
+            return $this->errorResponse('Error', 400, 'Failed to add new custom field');
+        }
+    }
+
+    public function checkCustomField($contact_type_id, $field_name)
+    {
+        try {
+            if (in_array($contact_type_id, [1,2,3])) {
+                $custom_field = B2BContactField::where('contact_type_id', $contact_type_id)->where('field_name', $field_name)->first();
+            }else{
+                $custom_field = B2CContactField::where('contact_type_id', $contact_type_id)->where('field_name', $field_name)->first();
+            }
+
+            if (!$custom_field) {
+                return $this->successResponse(null, 'Custom field not found', 400);
+            }
+
+            return $this->successResponse($custom_field, 'Custom field data', 200);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error', 400, 'Custom field not found');
+        }
     }
 }

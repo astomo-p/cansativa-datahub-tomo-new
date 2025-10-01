@@ -47,18 +47,21 @@ class HistoryExportController extends Controller
     public function getAllHistoryExports(Request $request)
     {
         try{
-            // default pagination setup
-            $sort = [];
+            $sort[] = ['row_no', 'asc'];
             if ($request->has('sort')) {
-                // sorting example => { sort : name.asc,amount_of_contacts.asc,created_date.desc }
-                $allowed_sort = ['name', 'contact_type', 'applied_filters', 'amount_of_contacts', 'export_to', 'created_date'];
-
+                $sort = [];
+                $allowed_sort = ['name', 'row_no', 'contact_type', 'applied_filters', 'amount_of_contacts', 'export_to', 'created_date'];
                 $sort_column = $request->get('sort');
+
+                if (is_string($sort_column)) {
+                    $decoded = json_decode($sort_column, true);
+                    $sort_column = json_last_error() === JSON_ERROR_NONE ? $decoded : [$sort_column];
+                }
                 foreach ($sort_column as $key => $value) {
                     $sort[] = explode('.', $value);
                     // if sort column not included in array and not ascending or descending
                     if (!in_array($sort[$key][0], $allowed_sort) || ($sort[$key][1] !== 'asc' && $sort[$key][1] !== 'desc')) {
-                        return $this->errorResponse('Error', 400, 'Failed to get pharmacy data. Invalid sorting column.');
+                        return $this->errorResponse('Error', 400, 'Failed to get history export data. Invalid sorting column.');
                     }
                 }
             }
@@ -66,11 +69,9 @@ class HistoryExportController extends Controller
             $start = $request->get('start', 0);
             $length = $request->get('length', 10);
             $search = $request->get('search');
-    
-            // count total records
-            $records_total = HistoryExports::count();
             
-            $baseQuery = HistoryExports::with(['savedFilter' => function ($q) {
+            $baseQuery = HistoryExports::query()
+            ->with(['savedFilter' => function ($q) {
                 $q->select('id', 'filter_name', 'applied_filters');
             }]);
 
@@ -81,7 +82,11 @@ class HistoryExportController extends Controller
             }
 
             try {
-                $records_total = $baseQuery->count();
+                // clone before counting
+                $countQuery = clone $baseQuery;
+                $records_total = $countQuery->count();
+    
+                $dataQuery = (clone $baseQuery)->selectRaw('ROW_NUMBER() OVER (ORDER BY history_exports.id DESC) as row_no, history_exports.*');
             } catch (\Exception $e) {
                 return $this->errorResponse('Error', 400, 'Failed to get history export data. Invalid filter column.');
             }
@@ -89,24 +94,20 @@ class HistoryExportController extends Controller
             $records_filtered = $records_total;
             if($search){
                 $search = trim($search);
-                $results = $baseQuery
+                $results = $dataQuery
                 ->where(function($query) use ($search) {
                     $query->where('history_exports.name', 'ilike', '%'.$search.'%');
                 });
             }
     
-            if ($request->has('sort')) {
-                foreach ($sort as $value) {
-                    if ($value[0] !== 'applied_filters') {
-                        $baseQuery->orderBy($value[0], $value[1]);
-                    }
+            foreach ($sort as $value) {
+                if ($value[0] !== 'applied_filters') {
+                    $dataQuery->orderBy($value[0], $value[1]);
                 }
-            }else{
-                $baseQuery->orderBy('history_exports.id', 'desc');
             }
 
             // paginate records
-            $results = $baseQuery 
+            $results = $dataQuery 
             ->take($length)
             ->skip($start)
             ->get();
@@ -118,15 +119,22 @@ class HistoryExportController extends Controller
 
                     if (is_string($appliedFilters)) {
                         $decoded = json_decode($appliedFilters, true);
-                        $data['applied_filters'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : '-';
-                    } elseif (is_array($appliedFilters)) {
+                        $data['applied_filters'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+                    } elseif (is_array($appliedFilters) && !empty($appliedFilters)) {
                         $data['applied_filters'] = $appliedFilters; // already decoded
                     } else {
-                        $data['applied_filters'] = '-';
+                        $data['applied_filters'] = null;
                     }
                 }
                 if (!is_null($data->savedFilter)) {
-                    $data->savedFilter['applied_filters'] = json_decode($data->savedFilter['applied_filters']);
+                    if (is_string($data->savedFilter['applied_filters'])) {
+                        $decoded = json_decode($data->savedFilter['applied_filters'], true);
+                        $data['applied_filters'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+                    } elseif (is_array($data->savedFilter['applied_filters']) && !empty($data->savedFilter['applied_filters'])) {
+                        $data['applied_filters'] = $data->savedFilter['applied_filters'];
+                    } else {
+                        $data['applied_filters'] = null;
+                    }
                 }
             }
 
@@ -147,18 +155,21 @@ class HistoryExportController extends Controller
                 }
             }
 
-             foreach($results as $item){
-                $item->lang = $request->header('Lang');
-                if($request->header('Lang')){
-                    $meticulous = ucwords($item->contact_type);
-                    $item->contact_type = TranslatorHelper::getTranslate($meticulous,$request->header('Lang'));
-                }
-            }
+              $final_results = [];
+              foreach($results->toArray() as $item){
+                 if($request->header('Lang')){
+                     $meticulous = ucwords(str_replace('-', ' ',$item['contact_type']));
+                     $item['contact_type'] = TranslatorHelper::getTranslate($meticulous,$request->header('Lang'));
+                     $meticulous2 = ucwords($item['export_to']);
+                     $item['export_name'] = ($item['export_to'] == 'XLSX-Export') ? 'XLSX-Export' : TranslatorHelper::getTranslate($meticulous2,$request->header('Lang'));
+                 }
+                 array_push($final_results,$item);
+             }
     
             $data = [
                 'recordsTotal' => $records_total,
                 'recordsFiltered' => $records_filtered,
-                'data' => $results
+                'data' => $final_results
             ];
     
             return $this->successResponse($data, 'All History exports retrieved', 200);

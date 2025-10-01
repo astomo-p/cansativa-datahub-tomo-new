@@ -24,7 +24,18 @@ class B2BFiles extends Model
     /**
      * The attributes that are mass assignable.
      */
-    protected $fillable = ['contact_id', 'file_name', 'file_path'];
+    protected $fillable = ['contact_id', 'file_name', 'file_path', 'file_size', 'created_by', 'updated_by'];
 
-    
+    protected $appends = ['file_url'];
+
+    public function getFileUrlAttribute()
+    {
+        if (!$this->file_path) {
+            return null;
+        }
+
+        $minioBaseUrl = env('MINIO_ENDPOINT');
+        $file_url = $minioBaseUrl.'/datahub/'.$this->file_path;
+        return $file_url;
+    }
 }

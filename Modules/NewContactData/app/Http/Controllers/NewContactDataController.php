@@ -41,6 +41,7 @@ use Modules\B2BContact\Models\ColumnMappings;
 use Modules\NewContactData\Helpers\ContactFieldHelper;
 use Modules\NewContactData\Models\ContactField;
 use Modules\NewContactData\Models\ContactFieldValue;
+use Modules\NewContactData\Helpers\TranslatorHelper;
 
 class NewContactDataController extends Controller
 {
@@ -1047,9 +1048,11 @@ class NewContactDataController extends Controller
                 } 
                 $formatted_results[] = $item->except('account_key_manager_id');
             }
-
-            $formatted_results[] = ContactFieldHelper::getContactFieldData($item->id,$item); 
-        } 
+        }
+        
+        foreach($formatted_results as $item){
+             $item = ContactFieldHelper::getContactFieldData($item['id'],$item);
+        }
         
         $res = [
             'recordsTotal' => $records_total,
@@ -1657,7 +1660,7 @@ class NewContactDataController extends Controller
                     continue;
                 }
 
-                $ori = $original[$attr] ?? 'empty';
+                $ori = $original[$attr] ?? '-';
                 // If this attribute is boolean
                 if (in_array($attr, ['whatsapp_subscription', 'email_subscription'])) {
                     $ori = filter_var($ori, FILTER_VALIDATE_BOOLEAN) ? 'Yes' : 'No';
@@ -1678,7 +1681,7 @@ class NewContactDataController extends Controller
                     $newCC = $dirty['country_code'];
                 }
 
-                $ori = $original['phone_no'] ?? 'empty';
+                $ori = $original['phone_no'] ?? '-';
                 $newValue = $original['phone_no'];
                 if ($editPhone) {
                     $newValue = $dirty['phone_no'];
@@ -2150,12 +2153,28 @@ class NewContactDataController extends Controller
 
            $spreadsheet = new Spreadsheet();
 
+           $default_header = [];
+
+           switch($contact) {
+             case 'community':
+                $default_header = ['Full Name','Email','Phone Number','WhatsApp Subscription','Email Subscription','Likes','Comments','Submissions','Account Creation','Latest Login'];
+                break;
+           }
+
            while($chunk < $chunk_size){
                 $data = $results
                         ->skip($chunk * $limit)
                         ->take($limit)
                         ->get();
-                 
+
+                $custom_fields = []; 
+                $custom_fields_with_id = [];       
+                foreach($data as $item){
+                    $custom_fields[] = ContactFieldHelper::getContactFieldDataCustomOnly($item->id);
+                    $custom_fields_with_id[] = ContactFieldHelper::getContactFieldDataCustomOnlyWithContactId($item->id);
+                }          
+
+                //var_dump($custom_fields);
 
                 if($contact == 'general_newsletter' || $contact == 'subscriber'){
 
@@ -2180,7 +2199,14 @@ class NewContactDataController extends Controller
                 } else {       
 
                 $sheet = $chunk == 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
-                $sheet->setCellValue('A1', 'Full Name');
+                $col = 'A';
+                $count = 0;
+                foreach($default_header as $header){
+                    $col_name = TranslatorHelper::getTranslate($header,'de');
+                    $sheet->setCellValue($col . '1', $col_name);
+                    $col++;
+                    $count++;
+                /* $sheet->setCellValue('A1', 'Full Name');
                 $sheet->setCellValue('B1', 'Email'); 
                 $sheet->setCellValue('C1', 'Phone Number');
                 $sheet->setCellValue('D1', 'Whatsapp Subscription');
@@ -2189,8 +2215,26 @@ class NewContactDataController extends Controller
                 $sheet->setCellValue('G1', 'Comments');
                 $sheet->setCellValue('H1', 'Submissions');
                 $sheet->setCellValue('I1', 'Account Creation');
-                $sheet->setCellValue('J1', 'Latest Login');
-                $rows = 2;
+                $sheet->setCellValue('J1', 'Latest Login'); */
+                }
+ 
+ 
+                foreach($custom_fields as $items){
+                   // var_dump($items);
+                        if (count($items) > 0){
+                            // contain extra contact fields
+                            foreach($items as $key => $val){
+                                $sheet->setCellValue($col . '1', $key);
+                                $col++;
+                            }
+                            break;
+                        }
+                 }
+
+               
+
+
+                $rows = 2;  
                 foreach($data as $row){
                 $sheet->setCellValue('A' . $rows, $row['contact_name']);
                 $sheet->setCellValue('B' . $rows, $row['email']);
@@ -2202,6 +2246,26 @@ class NewContactDataController extends Controller
                 $sheet->setCellValue('H' . $rows, $row['total_submissions']);
                 $sheet->setCellValue('I' . $rows, date('d F Y',strtotime($row['account_creation'])));
                 $sheet->setCellValue('J' . $rows, date('d F Y',strtotime($row['created_date'])));
+
+                            foreach($custom_fields_with_id as $items){
+                                if(count($items) > 1){
+                                    //continue from static default data column
+                                    $col = 'K';
+                                    //contains extra contacts field
+                                    if($items['contact_id'] == $row['id']){
+                                        foreach($items as $key => $val){
+                                            if($key != 'contact_id'){
+                                                $sheet->setCellValue($col . $rows, $val);
+                                                $col++;
+                                            }
+                                        }
+                                    //echo $col;
+                                    }
+                                    
+                                }
+                                
+                            }
+
                 $rows++;
                 }
 
@@ -2213,11 +2277,12 @@ class NewContactDataController extends Controller
 
         
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
-            $path = sys_get_temp_dir() . "/" . $filename;
+            $path = public_path($filename);
+            //$path = sys_get_temp_dir() . "/" . $filename;
             $writer = new Xlsx($spreadsheet); 
             $writer->save($path);
 
-            $filed = new UploadedFile(
+          /*   $filed = new UploadedFile(
                         $path, // Path to the file
                         $filename, // Original file name
                         null, // MIME type (optional, null will auto-detect)
@@ -2228,7 +2293,7 @@ class NewContactDataController extends Controller
             $request_body = new Request();
             $request_body->files->set('file',$filed);
             $response = (new B2BContactAdjustmentController())->handleFileUpload($request_body);
-            $links = ($response->getData())->file_url;
+            $links = ($response->getData())->file_url; */
 
            $brevo_id = 0;
            $recipient = [];
@@ -2243,7 +2308,7 @@ class NewContactDataController extends Controller
                     ->post($endpoint, [
                         'messaging_product' => 'whatsapp',
                         'recipient_type' => 'individual',
-                        'to' => $recipient[0]->phone_no,
+                        'to' => str_replace('+', '', $recipient[0]->country_code) . $recipient[0]->phone_no,
                         'type' => 'template',
                         'template' => [
                             'name' => $request->get('wa_template_name','report_template_cta'),
@@ -2309,19 +2374,24 @@ class NewContactDataController extends Controller
 
         }
 
-             HistoryExports::insert([
+
+               $export_to = $request->get('export_to') == 'email' ? 'Email Subscription' : ($request->get('export_to') == 'whatsapp' ? 'WhatsApp Subscription' : 'XLSX-Export');
+
+               HistoryExports::insert([
                 'contact_name' => $request->contact_name,
                 'contact_type' => $request->contact_type,
                 'applied_filters' => ($request->get("applied_filters")) == "" ? null : json_encode($request->applied_filters),
-                'export_to'=> $request->get('export_to','.xlsx'),
+                'export_to'=> $export_to,
                 'amount_contacts' => $count,
+               // 'amount_of_contacts' => $count,
                 'created_date' => date('Y-m-d H:i:s')
-            ]);  
+            ]);    
 
             
 
            return $this->successResponse([
-                "filename"=>$links
+                //"filename"=>$links
+                "filename"=>null
             ],'successfully exported file',200);
 
            
@@ -2621,7 +2691,15 @@ class NewContactDataController extends Controller
 
         $tempFile = tempnam(sys_get_temp_dir(), 'excel_');
         file_put_contents($tempFile, $file_source);
-        $reader = new XlsxReader();
+         // Detect file type from URL
+            $extension = strtolower(pathinfo(parse_url($file_path, PHP_URL_PATH), PATHINFO_EXTENSION));
+
+         // Use correct reader
+            $reader = match ($extension) {
+                'xlsx' => new XlsxReader(),
+                'csv'  => new Csv(),
+                default => throw new \Exception("Unsupported file type: $extension")
+            };
         $spreadsheet = $reader->load($tempFile);
         $worksheet = $spreadsheet->getActiveSheet()->toArray();
         $results = [];

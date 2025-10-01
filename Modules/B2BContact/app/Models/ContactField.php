@@ -9,8 +9,8 @@ class ContactField extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['field_name', 'field_type', 'description'];
     protected $connection = 'pgsql_b2b';
+    protected $fillable = ['field_name', 'field_type', 'description', 'contact_type_id'];
 
     public function fieldValues()
     {

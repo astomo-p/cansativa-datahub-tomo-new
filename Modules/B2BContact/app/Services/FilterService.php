@@ -3,14 +3,18 @@
 namespace Modules\B2BContact\Services;
 
 use Modules\B2BContact\Models\B2BContacts;
+use Modules\NewContactData\Models\Contacts;
 
 class FilterService
 {
-    public function getFilterData($contact_type_id)
+    public function getFilterData($contact_type_id, $search, $type)
     {
-        $filters['cities'] = B2BContacts::where('contact_type_id', $contact_type_id)->distinct()->whereNotNull('city')->pluck('city');
-        $filters['countries'] = B2BContacts::where('contact_type_id', $contact_type_id)->distinct()->whereNotNull('country')->pluck('country');
-        $filters['post_codes'] = B2BContacts::where('contact_type_id', $contact_type_id)->distinct()->whereNotNull('post_code')->pluck('post_code');
+        if ($type == 'b2b') {
+            $contact = new B2BContacts;
+        }else{
+            $contact = new Contacts;
+        }
+        $filters[$search] = $contact::where('contact_type_id', $contact_type_id)->distinct()->whereNotNull($search)->pluck($search);
         return $filters;
     }
 

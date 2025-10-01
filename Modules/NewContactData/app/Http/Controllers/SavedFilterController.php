@@ -4,6 +4,7 @@ namespace Modules\NewContactData\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\B2BContact\Helpers\FilterHelper;
 use Modules\NewContactData\Models\Contacts;
@@ -36,18 +37,23 @@ class SavedFilterController extends Controller
     public function getFilterTableList(Request $request)
     {
         try {
-            // default pagination setup
-            $sort = [];
+            $sort[] = ['saved_filters.id', 'desc'];
             if ($request->has('sort')) {
-                // sorting example => { sort : filter_name.asc,amount_of_contacts.asc,created_date.desc }
-                $allowed_sort = ['filter_name', 'contact_type', 'applied_filters', 'amount_of_contacts', 'created_date'];
+                $sort = [];
+                $allowed_sort = ['filter_name', 'contact_type_id', 'contact_type', 'applied_filters', 'amount_of_contacts', 'created_date'];
                 $sort_column = $request->get('sort');
+
+                if (is_string($sort_column)) {
+                    $decoded = json_decode($sort_column, true);
+                    $sort_column = json_last_error() === JSON_ERROR_NONE ? $decoded : [$sort_column];
+                }
                 foreach ($sort_column as $key => $value) {
                     $sort[] = explode('.', $value);
                     // if sort column not included in array and not ascending or descending
                     if (!in_array($sort[$key][0], $allowed_sort) || ($sort[$key][1] !== 'asc' && $sort[$key][1] !== 'desc')) {
-                        return $this->errorResponse('Error', 400, 'Failed to get pharmacy data. Invalid sorting column.');
+                        return $this->errorResponse('Error', 400, 'Failed to get saved filter data. Invalid sorting column.');
                     }
+                    
                 }
             }
 
@@ -56,7 +62,16 @@ class SavedFilterController extends Controller
             $search = $request->get('search');
             
             //  filter records if there are any filter request
-            $baseQuery = SavedFilters::where('saved_filters.is_deleted', false);
+            $baseQuery = SavedFilters::select(
+                DB::raw('ROW_NUMBER() OVER (ORDER BY saved_filters.id DESC) as row_no'),
+                'saved_filters.*',
+                DB::raw('(
+                    select contact_type_name
+                    from contact_types
+                    where contact_types.id = saved_filters.contact_type_id
+                    limit 1
+                ) as contact_type')
+            );
             
             if ($request->has('applied_filters')) {
                 foreach ($request->applied_filters as $key => $filter) {
@@ -80,14 +95,18 @@ class SavedFilterController extends Controller
                                 });
                 }
 
-                if ($request->has('sort')) {
-                    foreach ($sort as $value) {
-                        if ($value[0] !== 'applied_filters') {
+                foreach ($sort as $value) {
+                    if ($value[0] !== 'applied_filters') {
+                        if ($value[0] == 'contact_type') {
+                            $baseQuery->orderBy(
+                                ContactTypes::select('contact_type_name')
+                                    ->whereColumn('contact_types.id', 'saved_filters.contact_type_id'),
+                                $value[1]
+                            );
+                        }else{
                             $baseQuery->orderBy($value[0], $value[1]);
                         }
                     }
-                }else{
-                    $baseQuery->orderBy('saved_filters.id', 'desc');
                 }
 
                 // paginate records

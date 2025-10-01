@@ -18,6 +18,7 @@ class ContactTypes extends Model
     /**
      * The attributes that are mass assignable.
      */
+    protected $connection = 'pgsql_b2b';
     protected $fillable = [];
 
      /** relation */
@@ -62,6 +63,11 @@ class ContactTypes extends Model
             'id', // Local key on ContactTypes table
             'user_id' // Local key on Contacts table
         );
+    }
+
+    public function savedFilters()
+    {
+        return $this->hasMany(SavedFilter::class, 'contact_type_id');
     }
    
 

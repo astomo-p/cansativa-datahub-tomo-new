@@ -59,7 +59,50 @@ class ContactFieldHelper
       }
    }
  
+   public static function getContactFieldDataCustomOnly($contact_id) {
+       $field = ContactFieldValue::where('contact_id',$contact_id)
+       ->addSelect([
+        'field_name'=> ContactField::select('field_name')
+        ->whereColumn('contact_field_id','contact_fields.id')
+       ])
+       ->get(); 
+       $item = [];
+       if(gettype($item)  == 'array'){
+                $item = (object) $item;
+                foreach($field as $elem){
+                    $item->{$elem->field_name} = $elem->value;
+                } 
+                return (array) $item; 
+       } else {
+       foreach($field as $elem){
+            $item->{$elem->field_name} = $elem->value;
+       } 
+       return $item; 
+      }
+   }
 
+    public static function getContactFieldDataCustomOnlyWithContactId($contact_id) {
+       $field = ContactFieldValue::where('contact_id',$contact_id)
+       ->addSelect([
+        'field_name'=> ContactField::select('field_name')
+        ->whereColumn('contact_field_id','contact_fields.id')
+       ])
+       ->get(); 
+       $item = [];
+       if(gettype($item)  == 'array'){
+                $item = (object) $item;
+                $item->contact_id = $contact_id;
+                foreach($field as $elem){
+                    $item->{$elem->field_name} = $elem->value;
+                } 
+                return (array) $item; 
+       } else {
+       foreach($field as $elem){
+            $item->{$elem->field_name} = $elem->value;
+       } 
+       return $item; 
+      }
+   }
    
 
     public function handle() {}
