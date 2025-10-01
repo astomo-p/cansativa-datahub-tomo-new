@@ -1158,10 +1158,20 @@ class NewContactDataController extends Controller
             }
             $request_data = json_decode($request->getContent(), true);
 
+            $default_columns = [
+                    'contact_name', 'contact_no', 'address', 'post_code', 'city','country', 
+                    'state', 'contact_person', 'email', 'phone_no', 
+                    'amount_purchase', 'average_purchase', 'total_purchase', 
+                    'last_purchase_date', 'whatsapp_subscription', 'cansativa_newsletter', 'email_subscription',
+                    'contact_parent_id'
+                ];
+
             // Format the request data
             $formatted_request_data = [];
 
             $blocked = ['likes','comments','submissions'];
+
+            $contact_field_columns = [];
 
             foreach($request_data as $key => $value){
                 /* if($key == 'email_subscription'){
@@ -1169,10 +1179,13 @@ class NewContactDataController extends Controller
                 } else {
                     $formatted_request_data[$key] = $value;
                 } if(in_array($key,$blocked)){} 
+            */ if(!in_array($key, $default_columns)){
+                  $contact_field_columns[$key] = $value;
+                }
             
-            else {  */ 
+            else {  
                $formatted_request_data[$key] = $value;
-             // }
+              }
             }
 
             // Update the contact
@@ -1193,6 +1206,33 @@ class NewContactDataController extends Controller
             ])
             ]);  
             event(new AuditLogged(AuditLogs::MODULE_COMMUNITY, 'Edit Contact'));
+
+            $imported_custom_data = [];
+       // var_dump($contact_field_columns);
+         foreach($contact_field_columns as $key => $value) {
+            $fielder = ContactFieldHelper::pushContactField($key,$value);
+           $imported_custom_data[] = $fielder;
+        }
+
+        //var_dump($imported_custom_data);
+
+         foreach($imported_custom_data as $items){
+            
+              $check = ContactField::where('field_name',$items['field_name'])->count();
+             if($check == 0){
+                 ContactField::insert([
+                    "field_name"=> $items['field_name'],
+                    "field_type"=> $items['field_type'],
+                    "description"=> $items['description']
+                ]); 
+             } 
+           
+       }
+
+     $contact_field_value = ContactFieldHelper::pushFieldValue($imported_custom_data,$id);
+        foreach($contact_field_value as $value){
+                ContactFieldValue::insert($value);  
+       } 
 
             return $this->successResponse(null,'Community data updated successfully',200);
         }
@@ -1434,6 +1474,14 @@ class NewContactDataController extends Controller
     {
         $request_data = json_decode($request->getContent(), true);
 
+        $default_columns = [
+                    'contact_name', 'contact_no', 'address', 'post_code', 'city','country', 
+                    'state', 'contact_person', 'email', 'phone_no', 
+                    'amount_purchase', 'average_purchase', 'total_purchase', 
+                    'last_purchase_date', 'whatsapp_subscription', 'cansativa_newsletter', 'email_subscription',
+                    'contact_parent_id'
+                ];
+
         // validate contact_parent_id
         Validator::make($request_data, [
             'contact_parent_id' => 'required|integer'
@@ -1447,6 +1495,8 @@ class NewContactDataController extends Controller
         $formatted_request_data = [];
 
         $blocked = ['likes','comments','submissions'];
+
+        $contact_field_columns = [];
 
         foreach($request_data as $key => $value){
            /*  if($key == 'email_subscription'){
@@ -1462,7 +1512,9 @@ class NewContactDataController extends Controller
                     "phone" => $account_key_mgr_data["phone"]
                 ]);
                 $formatted_request_data['account_key_manager_id'] = $account_key_mgr_id;
-            }
+            } else if(!in_array($key, $default_columns)){
+                  $contact_field_columns[$key] = $value;
+                }
             else {
                 $formatted_request_data[$key] = $value;
             }
@@ -1478,8 +1530,35 @@ class NewContactDataController extends Controller
             'log_type' => "contacts",
             'title' => "Added manually by ". $userName
         ];
-        event(new ContactLogged('add_contact', 'b2b', $contactId, null, $description, $userName, $userEmail));
-        event(new AuditLogged(AuditLogs::MODULE_PHARMACY_DB, 'Create new Contact'));
+        //event(new ContactLogged('add_contact', 'b2b', $contactId, null, $description, $userName, $userEmail));
+       // event(new AuditLogged(AuditLogs::MODULE_PHARMACY_DB, 'Create new Contact'));
+
+        $imported_custom_data = [];
+       // var_dump($contact_field_columns);
+         foreach($contact_field_columns as $key => $value) {
+            $fielder = ContactFieldHelper::pushContactField($key,$value);
+           $imported_custom_data[] = $fielder;
+        }
+
+        //var_dump($imported_custom_data);
+
+         foreach($imported_custom_data as $items){
+            
+              $check = ContactField::where('field_name',$items['field_name'])->count();
+             if($check == 0){
+                 ContactField::insert([
+                    "field_name"=> $items['field_name'],
+                    "field_type"=> $items['field_type'],
+                    "description"=> $items['description']
+                ]); 
+             } 
+           
+       }
+
+     $contact_field_value = ContactFieldHelper::pushFieldValue($imported_custom_data,$contactId);
+        foreach($contact_field_value as $value){
+                ContactFieldValue::insert($value);  
+       } 
 
         return $this->successResponse(null,'Pharmacy database data added successfully',200);
     }
@@ -1697,6 +1776,49 @@ class NewContactDataController extends Controller
             // save updated data
             $result->save();
             $result->refresh();
+
+            $default_columns = [
+                    'contact_name', 'contact_no', 'address', 'post_code', 'city','country', 
+                    'state', 'contact_person', 'email', 'phone_no', 
+                    'amount_purchase', 'average_purchase', 'total_purchase', 
+                    'last_purchase_date', 'whatsapp_subscription', 'cansativa_newsletter', 'email_subscription',
+                    'contact_parent_id'
+                ];
+            
+             $contact_field_columns = [];
+
+            foreach($request_data as $key => $value){
+                if(!in_array($key, $default_columns)){
+                  $contact_field_columns[$key] = $value;
+                }
+            }
+
+              $imported_custom_data = [];
+                // var_dump($contact_field_columns);
+                    foreach($contact_field_columns as $key => $value) {
+                        $fielder = ContactFieldHelper::pushContactField($key,$value);
+                    $imported_custom_data[] = $fielder;
+                    }
+
+                    //var_dump($imported_custom_data);
+
+                    foreach($imported_custom_data as $items){
+                        
+                        $check = ContactField::where('field_name',$items['field_name'])->count();
+                        if($check == 0){
+                            ContactField::insert([
+                                "field_name"=> $items['field_name'],
+                                "field_type"=> $items['field_type'],
+                                "description"=> $items['description']
+                            ]); 
+                        } 
+                    
+                }                        
+
+            $contact_field_value = ContactFieldHelper::pushFieldValue($imported_custom_data,$id);
+                foreach($contact_field_value as $value){
+                        ContactFieldValue::insert($value);  
+            } 
 
             DB::commit();
         } catch (\Exception $e) {
@@ -2076,6 +2198,8 @@ class NewContactDataController extends Controller
                 return $this->errorResponse('invalid contact_type',400);
            }
 
+           $b2b_contacts = FilterHelper::createBaseQuery(1,$request);
+           
            $results = ContactTypes::find($contact_type[$contact])
            ->contacts()
            ->when($request->get('parent_id'),function ($query,$parent_id){
@@ -2143,6 +2267,13 @@ class NewContactDataController extends Controller
                         ])
            ->where('is_deleted',false);
 
+           if($contact == 'pharmacy-database'){
+                 $results = $b2b_contacts;
+           }
+          
+
+          // $final = $results->get();
+
            $count = $results->count();
 
            $limit = 25;
@@ -2158,6 +2289,9 @@ class NewContactDataController extends Controller
            switch($contact) {
              case 'community':
                 $default_header = ['Full Name','Email','Phone Number','WhatsApp Subscription','Email Subscription','Likes','Comments','Submissions','Account Creation','Latest Login'];
+                break;
+             case 'pharmacy-database':
+                $default_header = ['Pharmacy Name','Pharmacy Number','Address','Post Code','City','Country','Contact Person','Email','Phone','Amount of Contacts','Amount of Purchases','Average Purchases Value','Total Purchases Value','Last Purchase'];
                 break;
            }
 
@@ -2195,6 +2329,73 @@ class NewContactDataController extends Controller
                 $sheet->setCellValue('F' . $rows, date('d F Y',strtotime($row['created_date'])));
                 $rows++;
                 }
+
+                }
+
+                else if($contact == 'pharmacy-database'){
+
+                        $sheet = $chunk == 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
+                        $col = 'A';
+                        $count = 0;
+                        foreach($default_header as $header){
+                            $col_name = TranslatorHelper::getTranslate($header,'de');
+                            $sheet->setCellValue($col . '1', $col_name);
+                            $col++;
+                            $count++;
+                        }
+
+                         foreach($custom_fields as $items){
+                            // var_dump($items);
+                                    if (count($items) > 0){
+                                        // contain extra contact fields
+                                        foreach($items as $key => $val){
+                                            $sheet->setCellValue($col . '1', $key);
+                                            $col++;
+                                        }
+                                        break;
+                                    }
+                            }
+
+                        $rows = 2;  
+                        foreach($data as $row){
+                        $sheet->setCellValue('A' . $rows, $row['contact_name']);
+                        $sheet->setCellValue('B' . $rows, $row['contact_no']);
+                        $sheet->setCellValue('C' . $rows, $row['address']);
+                        $sheet->setCellValue('D' . $rows, $row['postcode']);
+                        $sheet->setCellValue('E' . $rows, $row['city']);
+                        $sheet->setCellValue('F' . $rows, $row['country']);
+                        $sheet->setCellValue('G' . $rows, $row['contact_person']);
+                        $sheet->setCellValue('H' . $rows, $row['email']);
+                        $sheet->setCellValue('I' . $rows, $row['phone_no']);
+                        $sheet->setCellValue('J' . $rows, $row['amount_contacts']);
+                        $sheet->setCellValue('K' . $rows, $row['amount_purchase']);
+                        $sheet->setCellValue('L' . $rows, $row['average_purchase']);
+                        $sheet->setCellValue('M' . $rows, $row['total_purchase']); 
+                        $sheet->setCellValue('N' . $rows, date('d F Y',strtotime($row['last_purchase_date'])));
+
+                             foreach($custom_fields_with_id as $items){
+                                if(count($items) > 1){
+                                    //continue from static default data column
+                                    $col = 'O';
+                                    //contains extra contacts field
+                                    if($items['contact_id'] == $row['id']){
+                                        foreach($items as $key => $val){
+                                            if($key != 'contact_id'){
+                                                $sheet->setCellValue($col . $rows, $val);
+                                                $col++;
+                                            }
+                                        }
+                                    //echo $col;
+                                    }
+                                    
+                                }
+                                
+                            }
+
+                        
+                        $rows++;
+                        }
+
 
                 } else {       
 
@@ -2275,7 +2476,7 @@ class NewContactDataController extends Controller
 
            }
 
-        
+           
             $filename = date('YmdHis') . "-" . $contact . ".xlsx";
             $path = public_path($filename);
             //$path = sys_get_temp_dir() . "/" . $filename;
@@ -2391,7 +2592,8 @@ class NewContactDataController extends Controller
 
            return $this->successResponse([
                 //"filename"=>$links
-                "filename"=>null
+                "filename"=>null,
+                //"data"=>$final
             ],'successfully exported file',200);
 
            
