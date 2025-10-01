@@ -3412,6 +3412,22 @@ class NewContactDataController extends Controller
          * 
          */
 
+        $check_keys = array_keys($request_data);
+        $status = false;
+        foreach($check_keys as $key){
+            if($key == 'phone_no' || $key == 'email'){
+               $status = true;
+               break;
+            } else if($key == 'contact_name'){
+                $status = true;
+                break;
+            }
+        }
+
+        if(!$status){
+            return $this->errorResponse('mapped imported data must contain contact_name, email, or phone data',400); 
+        }
+
         foreach($request_data as $key => $array_data){
              foreach($array_data as $data){
              array_push($imported_data,[]);
